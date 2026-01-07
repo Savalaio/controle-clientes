@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Painel Administrativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #020617; color: #fff; }
+        .card-gradient-dark {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.6) 100%);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+    </style>
+</head>
+<body class="font-sans">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <div class="w-64 flex-shrink-0 border-r border-gray-800 p-6 flex flex-col gap-6 bg-[#020617]">
+            <div class="text-xl font-bold text-blue-500 flex items-center gap-2">
+                <i class="fas fa-shield-alt"></i> Admin Panel
+            </div>
+            
+            <nav class="flex-1 space-y-2">
+                <a href="admin.html" class="block text-white bg-blue-900/20 border border-blue-900/50 rounded px-4 py-3 flex items-center gap-3 transition">
+                    <i class="fas fa-chart-pie w-6"></i> Dashboard
+                </a>
+                <a href="admin_users.html" class="block text-gray-400 hover:text-white hover:bg-gray-800/50 rounded px-4 py-3 flex items-center gap-3 transition">
+                    <i class="fas fa-users-cog w-6"></i> Gerenciar Usuários
+                </a>
+                <a href="admin_support.html" id="nav-support" class="block text-gray-400 hover:text-white hover:bg-gray-800/50 rounded px-4 py-3 flex items-center gap-3 transition">
+                    <i class="fas fa-headset w-6"></i> Suporte <span id="support-badge" class="hidden bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-auto"></span>
+                </a>
+                <a href="index.html" class="block text-purple-400 hover:text-purple-300 hover:bg-purple-900/10 rounded px-4 py-3 flex items-center gap-3 transition mt-8 border border-purple-900/30">
+                    <i class="fas fa-external-link-alt w-6"></i> Acessar Sistema
+                </a>
+            </nav>
+
+            <div class="border-t border-gray-800 pt-6">
+                <a href="#" onclick="logout()" class="block text-red-400 hover:text-red-300 px-4 py-2 flex items-center gap-2 transition">
+                    <i class="fas fa-sign-out-alt w-6"></i> Sair
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto bg-[#0b0f19]">
+            
+            <!-- Header -->
+            <header class="bg-[#020617] border-b border-gray-800 sticky top-0 z-20 px-8 py-4 flex justify-between items-center shadow-lg">
+                <h1 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fas fa-columns text-blue-500"></i> Visão Geral
+                </h1>
+                <div class="flex items-center gap-4">
+                    <div class="text-sm text-gray-400">
+                        <i class="far fa-calendar-alt mr-2"></i> <span id="currentDate"></span>
+                    </div>
+                    <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-sm">
+                        A
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-8 max-w-7xl mx-auto space-y-8">
+                
+                <!-- KPI Cards Row 1: General Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <!-- Total Users -->
+                    <div class="card-gradient-dark rounded-xl p-6 card-hover transition duration-300">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-gray-400 text-sm font-medium">Total de Usuários</p>
+                                <h3 class="text-3xl font-bold text-white mt-1" id="total-users">0</h3>
+                            </div>
+                            <div class="p-3 bg-blue-500/10 rounded-lg text-blue-400">
+                                <i class="fas fa-users text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 flex items-center gap-1">
+                            <i class="fas fa-database"></i> Registrados no sistema
+                        </div>
+                    </div>
+
+                    <!-- Total Clients -->
+                    <div class="card-gradient-dark rounded-xl p-6 card-hover transition duration-300">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-gray-400 text-sm font-medium">Total de Clientes</p>
+                                <h3 class="text-3xl font-bold text-white mt-1" id="total-clients">0</h3>
+                            </div>
+                            <div class="p-3 bg-purple-500/10 rounded-lg text-purple-400">
+                                <i class="fas fa-address-book text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 flex items-center gap-1">
+                            <i class="fas fa-layer-group"></i> Gerenciados pelos usuários
+                        </div>
+                    </div>
+
+                    <!-- Estimated Revenue (MRR) -->
+                    <div class="card-gradient-dark rounded-xl p-6 card-hover transition duration-300 border-green-900/30">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-gray-400 text-sm font-medium">Receita Mensal (Est.)</p>
+                                <h3 class="text-3xl font-bold text-green-400 mt-1" id="estimated-revenue">R$ 0,00</h3>
+                            </div>
+                            <div class="p-3 bg-green-500/10 rounded-lg text-green-400">
+                                <i class="fas fa-dollar-sign text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 flex items-center gap-1">
+                            <i class="fas fa-calculator"></i> Baseado nos planos ativos
+                        </div>
+                    </div>
+
+                    <!-- Blocked Users -->
+                    <div class="card-gradient-dark rounded-xl p-6 card-hover transition duration-300 border-red-900/30">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-gray-400 text-sm font-medium">Usuários Bloqueados</p>
+                                <h3 class="text-3xl font-bold text-red-400 mt-1" id="count-blocked">0</h3>
+                            </div>
+                            <div class="p-3 bg-red-500/10 rounded-lg text-red-400">
+                                <i class="fas fa-ban text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 flex items-center gap-1">
+                            <i class="fas fa-lock"></i> Acesso restrito
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Cards Row 2: Plans Breakdown -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="card-gradient-dark rounded-xl p-5 flex items-center justify-between border-l-4 border-l-blue-500">
+                        <div>
+                            <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">Plano Grátis</span>
+                            <div class="text-2xl font-bold mt-1" id="count-free">0</div>
+                        </div>
+                        <i class="fas fa-ticket-alt text-gray-700 text-4xl opacity-50"></i>
+                    </div>
+
+                    <div class="card-gradient-dark rounded-xl p-5 flex items-center justify-between border-l-4 border-l-pink-500">
+                        <div>
+                            <span class="text-xs font-bold text-pink-400 uppercase tracking-wider">Plano Pro</span>
+                            <div class="text-2xl font-bold mt-1" id="count-pro">0</div>
+                        </div>
+                        <i class="fas fa-rocket text-gray-700 text-4xl opacity-50"></i>
+                    </div>
+
+                    <div class="card-gradient-dark rounded-xl p-5 flex items-center justify-between border-l-4 border-l-cyan-500">
+                        <div>
+                            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Plano Premium</span>
+                            <div class="text-2xl font-bold mt-1" id="count-premium">0</div>
+                        </div>
+                        <i class="fas fa-gem text-gray-700 text-4xl opacity-50"></i>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Main Chart -->
+                    <div class="lg:col-span-2 card-gradient-dark rounded-xl p-6">
+                        <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+                            <i class="fas fa-chart-line text-blue-500"></i> Distribuição de Receita
+                        </h3>
+                        <div class="h-64">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Donut Chart -->
+                    <div class="card-gradient-dark rounded-xl p-6">
+                        <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+                            <i class="fas fa-chart-pie text-purple-500"></i> Mix de Planos
+                        </h3>
+                        <div class="h-64 flex items-center justify-center">
+                            <canvas id="plansChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuração de Preços -->
+                <div class="card-gradient-dark rounded-xl p-6 border border-gray-800">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fas fa-tags text-yellow-500"></i> Configuração de Preços
+                        </h3>
+                        <button onclick="savePrices()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+                            <i class="fas fa-save"></i> Salvar Alterações
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                            <label class="block text-gray-400 text-sm mb-2">Plano FREE</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-500">R$</span>
+                                <input type="number" id="price-free" step="0.01" class="w-full bg-gray-800 border border-gray-600 rounded p-2 pl-8 text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div class="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                            <label class="block text-gray-400 text-sm mb-2">Plano PRO</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-500">R$</span>
+                                <input type="number" id="price-pro" step="0.01" class="w-full bg-gray-800 border border-gray-600 rounded p-2 pl-8 text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div class="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                        <label class="block text-gray-400 text-sm mb-2">Plano PREMIUM</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-2 text-gray-500">R$</span>
+                            <input type="number" id="price-premium" step="0.01" class="w-full bg-gray-800 border border-gray-600 rounded p-2 pl-8 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                    <label class="block text-gray-400 text-sm mb-2">Chave PIX (Para Recebimento via WhatsApp)</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2 text-green-500"><i class="fas fa-qrcode"></i></span>
+                        <input type="text" id="pix-key" class="w-full bg-gray-800 border border-gray-600 rounded p-2 pl-10 text-white focus:outline-none focus:border-green-500 placeholder-gray-600" placeholder="Ex: 123.456.789-00 ou email@exemplo.com">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Esta chave será usada nas mensagens de cobrança enviadas pelo WhatsApp.</p>
+                </div>
+            </div>
+
+                <!-- Recent Users Table -->
+                <div class="card-gradient-dark rounded-xl overflow-hidden">
+                    <div class="p-6 border-b border-gray-800 flex justify-between items-center">
+                        <h3 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fas fa-clock text-green-500"></i> Usuários Recentes
+                        </h3>
+                        <a href="admin_users.html" class="text-sm text-blue-400 hover:text-blue-300">Ver todos &rarr;</a>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-400">
+                            <thead class="bg-gray-900/50 uppercase text-xs">
+                                <tr>
+                                    <th class="p-4 font-semibold">ID</th>
+                                    <th class="p-4 font-semibold">Nome</th>
+                                    <th class="p-4 font-semibold">Email</th>
+                                    <th class="p-4 font-semibold">Plano</th>
+                                    <th class="p-4 font-semibold text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentUsersTable" class="divide-y divide-gray-800">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set Date
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('pt-BR', options);
+
+        // Auth Guard
+        if (!localStorage.getItem('user_token')) {
+            window.location.href = 'login.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('user_token');
+            window.location.href = 'login.html';
+        }
+        </script>
+        <script>
+        // Ticket Badge Logic
+        async function updateTicketBadge() {
+            try {
+                const res = await fetch('/api/tickets/stats');
+                const data = await res.json();
+                const count = data.open_count;
+                const badge = document.getElementById('support-badge');
+                
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            } catch (e) { console.error(e); }
+        }
+        setInterval(updateTicketBadge, 10000);
+        updateTicketBadge();
+
+        const API_URL = '/api';
+
+        // Global pricing variable
+        let PRICING = {
+            free: 0,
+            pro: 29.90,
+            premium: 49.90
+        };
+
+        async function initDashboard() {
+            try {
+                // 1. Fetch Stats for Cards (includes prices)
+                const statsRes = await fetch(`${API_URL}/admin/stats`);
+                const stats = await statsRes.json();
+                
+                // Update PRICING from DB
+                if (stats.prices) {
+                    PRICING = stats.prices;
+                    document.getElementById('price-free').value = PRICING.free;
+                    document.getElementById('price-pro').value = PRICING.pro;
+                    document.getElementById('price-premium').value = PRICING.premium;
+                }
+                
+                // Update PIX Key
+                if (stats.pix_key) {
+                    document.getElementById('pix-key').value = stats.pix_key;
+                }
+
+                // Update Counts
+                document.getElementById('count-free').innerText = stats.users_free;
+                document.getElementById('count-pro').innerText = stats.users_pro;
+                document.getElementById('count-premium').innerText = stats.users_premium;
+                document.getElementById('count-blocked').innerText = stats.users_blocked;
+                document.getElementById('total-users').innerText = stats.total_users;
+                document.getElementById('total-clients').innerText = stats.total_clients;
+
+                // Calculate Revenue
+                const revenue = (stats.users_pro * PRICING.pro) + (stats.users_premium * PRICING.premium);
+                document.getElementById('estimated-revenue').innerText = revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                // 2. Fetch All Users for Table & Charts
+                const usersRes = await fetch(`${API_URL}/admin/users`);
+                const users = await usersRes.json();
+
+                // Populate Recent Users Table (Last 5)
+                const recentUsers = [...users].sort((a, b) => b.id - a.id).slice(0, 5);
+                const tbody = document.getElementById('recentUsersTable');
+                tbody.innerHTML = recentUsers.map(u => `
+                    <tr class="hover:bg-gray-800/30 transition">
+                        <td class="p-4">#${u.id}</td>
+                        <td class="p-4 font-medium text-white">${u.name || 'Sem nome'}</td>
+                        <td class="p-4">${u.email}</td>
+                        <td class="p-4"><span class="px-2 py-1 rounded text-xs uppercase font-bold ${getPlanColor(u.plan)} bg-opacity-20">${u.plan}</span></td>
+                        <td class="p-4 text-right">
+                            <span class="inline-flex items-center gap-1 ${u.status === 'active' ? 'text-green-500' : 'text-red-500'}">
+                                <i class="fas fa-circle text-[8px]"></i> ${u.status === 'active' ? 'Ativo' : 'Bloqueado'}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('');
+
+                // 3. Render Charts
+                renderCharts(stats);
+
+            } catch (error) {
+                console.error('Error initializing dashboard:', error);
+            }
+        }
+
+        async function savePrices() {
+            const free = document.getElementById('price-free').value;
+            const pro = document.getElementById('price-pro').value;
+            const premium = document.getElementById('price-premium').value;
+            const pix_key = document.getElementById('pix-key').value;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prices: { free, pro, premium },
+                        pix_key: pix_key
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Configurações atualizadas com sucesso!');
+                    initDashboard(); // Reload to update revenue calculations
+                } else {
+                    alert('Erro ao atualizar configurações.');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Erro de conexão.');
+            }
+        }
+
+        function getPlanColor(plan) {
+            if (plan === 'premium') return 'text-cyan-400 bg-cyan-900';
+            if (plan === 'pro') return 'text-pink-400 bg-pink-900';
+            return 'text-blue-400 bg-blue-900';
+        }
+
+        function renderCharts(stats) {
+            // Plans Mix (Donut)
+            new Chart(document.getElementById('plansChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Free', 'Pro', 'Premium'],
+                    datasets: [{
+                        data: [stats.users_free, stats.users_pro, stats.users_premium],
+                        backgroundColor: ['#2563eb', '#db2777', '#06b6d4'], // Tailwind Blue, Pink, Cyan
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                    }
+                }
+            });
+
+            // Revenue Distribution (Bar - Simulated)
+            // Showing estimated revenue contribution per plan
+            const revFree = 0;
+            const revPro = stats.users_pro * PRICING.pro;
+            const revPremium = stats.users_premium * PRICING.premium;
+
+            new Chart(document.getElementById('revenueChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Free', 'Pro', 'Premium'],
+                    datasets: [{
+                        label: 'Receita Estimada (R$)',
+                        data: [revFree, revPro, revPremium],
+                        backgroundColor: ['#2563eb', '#db2777', '#06b6d4'],
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: '#1e293b' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        initDashboard();
+    </script>
+</body>
+</html>

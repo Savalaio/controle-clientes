@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Meus Clientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #020617; color: #fff; }
+        .login-input {
+            background-color: #020617;
+            border: 1px solid #1e293b;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .login-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="h-screen flex items-center justify-center font-sans">
+
+    <div class="w-full max-w-sm p-8 bg-gray-900/50 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-sm">
+        <div class="flex items-center gap-2 mb-8">
+            <i class="fas fa-lock text-orange-400 text-2xl"></i>
+            <h1 class="text-2xl font-bold">Login</h1>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-6">
+            <div class="relative">
+                <input type="email" id="email" placeholder="E-mail" required 
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+            </div>
+
+            <div class="relative">
+                <input type="password" id="password" placeholder="Senha" required 
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+            </div>
+
+            <button type="submit" 
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg shadow-blue-500/20">
+                Entrar
+            </button>
+        </form>
+
+        <div class="mt-4">
+            <button onclick="openHelpModal()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-2 rounded-lg transition border border-gray-700">
+                <i class="fas fa-question-circle mr-2"></i> Problemas de acesso / Bloqueio?
+            </button>
+        </div>
+
+        <div class="mt-6 text-sm">
+            <a href="forgot-password.html" class="block text-blue-400 hover:text-blue-300 mb-2">Esqueci minha senha</a>
+            <div class="text-gray-400">
+                Não tem conta? <a href="register.html" class="text-blue-400 hover:text-blue-300 font-semibold">Criar conta</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-gray-900 border border-gray-700 p-8 rounded-xl w-full max-w-md relative shadow-2xl">
+            <button onclick="closeHelpModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            
+            <h2 class="text-2xl font-bold mb-4 text-white flex items-center gap-2">
+                <i class="fas fa-life-ring text-blue-500"></i> Central de Ajuda
+            </h2>
+            
+            <p class="text-gray-300 mb-6">
+                Se você está com problemas para acessar sua conta ou foi bloqueado, entre em contato com nosso suporte ou tente redefinir sua senha.
+            </p>
+
+            <div class="space-y-3">
+                <a href="forgot-password.html" class="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-3 rounded-lg font-bold transition">
+                    <i class="fas fa-key mr-2"></i> Redefinir Senha
+                </a>
+                
+                <a href="mailto:suporte@controle.com" class="block w-full bg-gray-800 hover:bg-gray-700 text-white text-center py-3 rounded-lg font-bold transition border border-gray-600">
+                    <i class="fas fa-envelope mr-2"></i> Enviar Email
+                </a>
+
+                <a href="https://wa.me/5511999999999" target="_blank" class="block w-full bg-green-600 hover:bg-green-700 text-white text-center py-3 rounded-lg font-bold transition">
+                    <i class="fab fa-whatsapp mr-2"></i> Falar no WhatsApp
+                </a>
+            </div>
+
+            <p class="text-xs text-gray-500 mt-6 text-center">
+                Horário de atendimento: Seg-Sex, 9h às 18h.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function openHelpModal() {
+            document.getElementById('helpModal').classList.remove('hidden');
+        }
+
+        function closeHelpModal() {
+            document.getElementById('helpModal').classList.add('hidden');
+        }
+
+        // Check if already logged in
+        if (localStorage.getItem('user_token')) {
+            window.location.href = 'index.html';
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = event.target.querySelector('button');
+            const originalText = btn.innerText;
+
+            btn.disabled = true;
+            btn.innerText = 'Entrando...';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('user_token', JSON.stringify(data.user));
+                    window.location.href = 'index.html';
+                } else {
+                    alert(data.error || 'Erro ao fazer login');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Erro de conexão com o servidor');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
+    </script>
+</body>
+</html>

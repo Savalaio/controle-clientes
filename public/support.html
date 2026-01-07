@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suporte - Área do Usuário</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #020617; color: #fff; }
+        .card-gradient-dark {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.4) 100%);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+    </style>
+</head>
+<body class="font-sans">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <div class="w-64 flex-shrink-0 border-r border-gray-800 p-6 flex flex-col gap-6">
+            <div class="text-xl font-bold text-green-500 flex items-center gap-2">
+                <i class="fas fa-robot"></i> Controle
+            </div>
+            
+            <nav class="flex-1 space-y-2">
+                <a href="index.html" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
+                    <i class="fas fa-home w-6"></i> Início
+                </a>
+                <a href="support.html" class="block text-white bg-gray-800 rounded px-4 py-2 flex items-center gap-2">
+                    <i class="fas fa-headset w-6"></i> Suporte
+                </a>
+                <div id="adminBtn" class="hidden">
+                    <a href="admin.html" class="block text-blue-400 hover:text-blue-300 px-4 py-2 flex items-center gap-2">
+                        <i class="fas fa-tools w-6"></i> Área do Admin
+                    </a>
+                </div>
+                <a href="#" onclick="logout()" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
+                    <i class="fas fa-sign-out-alt w-6"></i> Sair
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto p-8 flex flex-col items-center">
+            
+            <div class="w-full max-w-4xl">
+                <h1 class="text-3xl font-bold mb-8 flex items-center gap-3">
+                    <i class="fas fa-headset text-green-500"></i> Suporte
+                </h1>
+
+                <!-- New Ticket Form -->
+                <div class="card-gradient-dark p-6 rounded-xl mb-8">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-200">Novo Chamado</h2>
+                    <form id="newTicketForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Assunto</label>
+                            <input type="text" id="subject" required 
+                                class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded focus:outline-none focus:border-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Mensagem</label>
+                            <textarea id="message" required rows="4"
+                                class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded focus:outline-none focus:border-green-500"></textarea>
+                        </div>
+                        <button type="submit" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-bold transition">
+                            Enviar Chamado
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Tickets List -->
+                <h2 class="text-xl font-semibold mb-4 text-gray-200">Meus Chamados</h2>
+                <div class="space-y-4" id="ticketsList">
+                    <!-- Tickets rendered here -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Ticket Detail Modal -->
+    <div id="ticketModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="card-gradient-dark p-8 rounded-xl w-full max-w-2xl relative shadow-2xl border border-gray-700">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            
+            <h2 id="modalSubject" class="text-2xl font-bold mb-2 text-white"></h2>
+            <div class="flex items-center gap-4 mb-6 text-sm text-gray-400">
+                <span id="modalDate"></span>
+                <span id="modalStatus" class="px-2 py-0.5 rounded text-xs font-bold bg-gray-700 text-gray-300"></span>
+            </div>
+
+            <div id="modalMessages" class="space-y-4 mb-6 max-h-[400px] overflow-y-auto p-4 bg-gray-900/50 rounded-lg">
+                <!-- Messages -->
+            </div>
+
+            <form id="replyForm" class="flex gap-2">
+                <input type="text" id="replyMessage" placeholder="Escreva uma resposta..." required
+                    class="flex-1 bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded focus:outline-none focus:border-green-500">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold transition">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        const currentUser = JSON.parse(localStorage.getItem('user_token'));
+        let currentTicketId = null;
+
+        if (!currentUser) {
+            window.location.href = 'login.html';
+        }
+
+        // Show Admin Button
+        if (currentUser.role === 'admin') {
+            document.getElementById('adminBtn').classList.remove('hidden');
+        }
+
+        async function loadTickets() {
+            try {
+                const res = await fetch(`${API_URL}/tickets?userId=${currentUser.id}`);
+                const tickets = await res.json();
+                const container = document.getElementById('ticketsList');
+                container.innerHTML = '';
+
+                if (tickets.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhum chamado encontrado.</p>';
+                    return;
+                }
+
+                tickets.forEach(ticket => {
+                    const statusColors = {
+                        'open': 'bg-yellow-900 text-yellow-300',
+                        'answered': 'bg-blue-900 text-blue-300',
+                        'closed': 'bg-green-900 text-green-300'
+                    };
+                    const statusText = {
+                        'open': 'Aberto',
+                        'answered': 'Respondido',
+                        'closed': 'Fechado'
+                    };
+
+                    const div = document.createElement('div');
+                    div.className = 'bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-gray-600 transition cursor-pointer flex justify-between items-center';
+                    div.onclick = () => openTicket(ticket.id);
+                    div.innerHTML = `
+                        <div>
+                            <h3 class="font-bold text-lg text-white mb-1">${ticket.subject}</h3>
+                            <p class="text-sm text-gray-400">Última atualização: ${new Date(ticket.updated_at).toLocaleString()}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded text-xs font-bold ${statusColors[ticket.status] || 'bg-gray-700'}">
+                            ${statusText[ticket.status] || ticket.status}
+                        </span>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function openTicket(id) {
+            currentTicketId = id;
+            const res = await fetch(`${API_URL}/tickets/${id}`);
+            const data = await res.json();
+            
+            document.getElementById('modalSubject').textContent = data.ticket.subject;
+            document.getElementById('modalDate').textContent = new Date(data.ticket.created_at).toLocaleString();
+            
+            const statusBadge = document.getElementById('modalStatus');
+            statusBadge.textContent = data.ticket.status.toUpperCase();
+            
+            const msgsContainer = document.getElementById('modalMessages');
+            msgsContainer.innerHTML = '';
+
+            data.messages.forEach(msg => {
+                const isMe = msg.user_id === currentUser.id;
+                const div = document.createElement('div');
+                div.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+                div.innerHTML = `
+                    <div class="max-w-[80%] p-3 rounded-lg ${isMe ? 'bg-green-900/50 text-green-100 rounded-tr-none' : 'bg-gray-700 text-gray-200 rounded-tl-none'}">
+                        <div class="text-xs opacity-50 mb-1 flex justify-between gap-4">
+                            <span>${msg.sender_name}</span>
+                            <span>${new Date(msg.created_at).toLocaleString()}</span>
+                        </div>
+                        <p>${msg.message}</p>
+                    </div>
+                `;
+                msgsContainer.appendChild(div);
+            });
+
+            document.getElementById('ticketModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('ticketModal').classList.add('hidden');
+            currentTicketId = null;
+        }
+
+        document.getElementById('newTicketForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const subject = document.getElementById('subject').value;
+            const message = document.getElementById('message').value;
+
+            try {
+                await fetch(`${API_URL}/tickets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUser.id, subject, message })
+                });
+                e.target.reset();
+                loadTickets();
+                alert('Chamado criado com sucesso!');
+            } catch (err) {
+                alert('Erro ao criar chamado');
+            }
+        });
+
+        document.getElementById('replyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentTicketId) return;
+            const message = document.getElementById('replyMessage').value;
+
+            try {
+                await fetch(`${API_URL}/tickets/${currentTicketId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUser.id, message })
+                });
+                document.getElementById('replyMessage').value = '';
+                openTicket(currentTicketId); // Reload messages
+            } catch (err) {
+                alert('Erro ao enviar resposta');
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('user_token');
+            window.location.href = 'login.html';
+        }
+
+        loadTickets();
+    </script>
+</body>
+</html>

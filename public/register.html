@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar conta - Meus Clientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #020617; color: #fff; }
+        .login-input {
+            background-color: #020617;
+            border: 1px solid #1e293b;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .login-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="h-screen flex items-center justify-center font-sans">
+
+    <div class="w-full max-w-sm p-8 bg-gray-900/50 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-sm">
+        <div class="flex items-center justify-center gap-2 mb-8">
+            <i class="fas fa-file-signature text-orange-400 text-2xl"></i>
+            <h1 class="text-2xl font-bold">Criar conta</h1>
+        </div>
+
+        <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4">
+            <div class="relative">
+                <input type="text" id="name" placeholder="Nome" required 
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+            </div>
+
+            <div class="relative">
+                <input type="email" id="email" placeholder="E-mail" required 
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+            </div>
+
+            <div class="relative">
+                <input type="password" id="password" placeholder="Senha" required 
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+            </div>
+
+            <div class="relative">
+                <input type="text" id="whatsapp" placeholder="WhatsApp" 
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+            </div>
+
+            <div class="relative">
+                <input type="text" id="cpf" placeholder="CPF" 
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+            </div>
+
+            <button type="submit" 
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg shadow-blue-500/20 mt-4">
+                Criar conta
+            </button>
+        </form>
+
+        <div class="mt-6 text-sm text-center">
+            <div class="text-gray-400">
+                Já tenho conta <span class="text-gray-600">→</span> <a href="login.html" class="text-blue-400 hover:text-blue-300 font-semibold">Entrar</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if already logged in
+        if (localStorage.getItem('user_token')) {
+            window.location.href = 'index.html';
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const whatsapp = document.getElementById('whatsapp').value;
+            const cpf = document.getElementById('cpf').value;
+            
+            const btn = event.target.querySelector('button');
+            const originalText = btn.innerText;
+
+            btn.disabled = true;
+            btn.innerText = 'Criando...';
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password, whatsapp, cpf })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Auto login after register
+                    localStorage.setItem('user_token', JSON.stringify(data.user));
+                    window.location.href = 'index.html';
+                } else {
+                    alert(data.error || 'Erro ao criar conta');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Erro de conexão com o servidor');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
+    </script>
+</body>
+</html>

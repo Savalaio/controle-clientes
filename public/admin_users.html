@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Usuários - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #020617; color: #fff; }
+        .card-gradient-dark {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.4) 100%);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+    </style>
+</head>
+<body class="font-sans">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <div class="w-64 flex-shrink-0 border-r border-gray-800 p-6 flex flex-col gap-6">
+            <div class="text-xl font-bold text-blue-500 flex items-center gap-2">
+                <i class="fas fa-tools"></i> Admin
+            </div>
+            
+            <nav class="flex-1 space-y-2">
+                <a href="admin_users.html" class="block text-white bg-gray-800 rounded px-4 py-2 flex items-center gap-2">
+                    <i class="fas fa-users-cog w-6"></i> Gerenciar usuários
+                </a>
+                <a href="admin_support.html" id="nav-support" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
+                    <i class="fas fa-headset w-6"></i> Suporte <span id="support-badge" class="hidden bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-auto"></span>
+                </a>
+                <a href="admin.html" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
+                    <i class="fas fa-chart-line w-6"></i> Dashboard
+                </a>
+                <a href="index.html" class="block text-purple-400 hover:text-purple-300 px-4 py-2 flex items-center gap-2">
+                    <i class="fas fa-user w-6"></i> Área do Usuário
+                </a>
+                <a href="#" onclick="logout()" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
+                    <i class="fas fa-sign-out-alt w-6"></i> Sair
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto p-8 flex flex-col items-center">
+            
+            <!-- Title -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold flex justify-center items-center gap-3">
+                    <i class="fas fa-user text-purple-500"></i> Gerenciar Usuários
+                </h1>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="w-full max-w-6xl mb-6 flex justify-between items-center">
+                <div class="relative w-full max-w-md">
+                    <input type="text" id="searchInput" onkeyup="filterUsers()" placeholder="Buscar por nome, email ou CPF..." 
+                        class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-3 pl-10 rounded-lg focus:outline-none focus:border-blue-500 transition">
+                    <i class="fas fa-search absolute left-3 top-3.5 text-gray-500"></i>
+                </div>
+                <div class="text-sm text-gray-400">
+                    Total: <span id="totalCount" class="font-bold text-white">0</span>
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="w-full max-w-6xl card-gradient-dark rounded-xl overflow-x-auto shadow-2xl">
+                <table class="w-full text-left border-collapse min-w-[1000px]">
+                    <thead>
+                        <tr class="bg-gray-900/50 text-gray-400 text-sm uppercase border-b border-gray-800">
+                            <th class="p-4">Nome</th>
+                            <th class="p-4">Email</th>
+                            <th class="p-4">WhatsApp</th>
+                            <th class="p-4">CPF</th>
+                            <th class="p-4" title="Data de registro da conta no sistema">Data Registro <i class="fas fa-info-circle text-xs text-gray-500 ml-1"></i></th>
+                            <th class="p-4" title="Data de vencimento do plano (configurada pelo admin)">Vencimento <i class="fas fa-info-circle text-xs text-gray-500 ml-1"></i></th>
+                            <th class="p-4">Plano</th>
+                            <th class="p-4">Role</th>
+                            <th class="p-4">Pagamento</th>
+                            <th class="p-4">Clientes</th>
+                            <th class="p-4">Status</th>
+                            <th class="p-4">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody" class="text-gray-300 text-sm">
+                        <!-- Rows rendered by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-8">
+                <a href="admin.html" class="text-blue-500 hover:text-blue-400 flex items-center gap-2 transition">
+                    <i class="fas fa-arrow-left"></i> Voltar ao painel
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal for Plan Change -->
+    <div id="planModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-sm w-full border border-gray-700">
+            <h2 class="text-xl font-bold mb-4">Alterar Plano</h2>
+            <input type="hidden" id="modalUserId">
+            <div class="space-y-2 mb-6">
+                <button onclick="savePlan('free')" class="w-full p-3 bg-gray-700 hover:bg-gray-600 rounded text-left flex justify-between">
+                    <span>FREE</span>
+                    <i class="fas fa-check text-green-500 hidden" id="check-free"></i>
+                </button>
+                <button onclick="savePlan('pro')" class="w-full p-3 bg-gray-700 hover:bg-gray-600 rounded text-left flex justify-between">
+                    <span>PRO</span>
+                    <i class="fas fa-check text-green-500 hidden" id="check-pro"></i>
+                </button>
+                <button onclick="savePlan('premium')" class="w-full p-3 bg-gray-700 hover:bg-gray-600 rounded text-left flex justify-between">
+                    <span>PREMIUM</span>
+                    <i class="fas fa-check text-green-500 hidden" id="check-premium"></i>
+                </button>
+            </div>
+            <button onclick="closePlanModal()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Modal for Payment Status -->
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-sm w-full border border-gray-700">
+            <h2 class="text-xl font-bold mb-4">Status de Pagamento</h2>
+            <input type="hidden" id="modalPaymentUserId">
+            
+            <!-- Due Date Input -->
+            <div class="mb-4">
+                <label class="block text-gray-400 text-sm mb-1">Data de Vencimento</label>
+                <input type="date" id="paymentDueDate" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+            </div>
+
+            <div class="space-y-2 mb-6">
+                <button onclick="savePayment('paid')" class="w-full p-3 bg-green-900/30 hover:bg-green-900/50 border border-green-800 rounded text-left flex justify-between items-center group">
+                    <span class="text-green-400 group-hover:text-green-300 font-bold">PAGO</span>
+                    <i class="fas fa-check text-green-500 hidden" id="check-pay-paid"></i>
+                </button>
+                <button onclick="savePayment('pending')" class="w-full p-3 bg-yellow-900/30 hover:bg-yellow-900/50 border border-yellow-800 rounded text-left flex justify-between items-center group">
+                    <span class="text-yellow-400 group-hover:text-yellow-300 font-bold">PENDENTE</span>
+                    <i class="fas fa-check text-yellow-500 hidden" id="check-pay-pending"></i>
+                </button>
+                <button onclick="savePayment('overdue')" class="w-full p-3 bg-red-900/30 hover:bg-red-900/50 border border-red-800 rounded text-left flex justify-between items-center group">
+                    <span class="text-red-400 group-hover:text-red-300 font-bold">EM ATRASO</span>
+                    <i class="fas fa-check text-red-500 hidden" id="check-pay-overdue"></i>
+                </button>
+            </div>
+            <button onclick="closePaymentModal()" class="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 rounded">Cancelar</button>
+        </div>
+    </div>
+
+    <script>
+        // Ticket Badge Logic
+        async function updateTicketBadge() {
+            try {
+                const res = await fetch('/api/tickets/stats');
+                const data = await res.json();
+                const count = data.open_count;
+                const badge = document.getElementById('support-badge');
+                
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            } catch (e) { console.error(e); }
+        }
+        setInterval(updateTicketBadge, 10000);
+        updateTicketBadge();
+
+        const API_URL = '/api';
+
+        // Global variables for billing
+        let pricing = {};
+        let adminPixKey = '';
+
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${API_URL}/admin/stats`);
+                const stats = await response.json();
+                
+                if (stats.prices) {
+                    pricing = stats.prices;
+                }
+                
+                if (stats.pix_key) {
+                    adminPixKey = stats.pix_key;
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        // Auth Guard
+        if (!localStorage.getItem('user_token')) {
+            window.location.href = 'login.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('user_token');
+            window.location.href = 'login.html';
+        }
+
+        let allUsers = [];
+
+        async function loadUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i><br>Carregando usuários...</td></tr>';
+
+            try {
+                const response = await fetch(`${API_URL}/admin/users`);
+                if (!response.ok) throw new Error('Falha ao buscar usuários');
+                
+                allUsers = await response.json();
+                renderTable(allUsers);
+            } catch (error) {
+                console.error('Error loading users:', error);
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-red-400"><i class="fas fa-exclamation-circle text-2xl"></i><br>Erro ao carregar dados. Verifique o servidor.</td></tr>';
+            }
+        }
+
+        function filterUsers() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allUsers.filter(user => 
+                (user.name && user.name.toLowerCase().includes(term)) ||
+                (user.email && user.email.toLowerCase().includes(term)) ||
+                (user.cpf && user.cpf.includes(term)) ||
+                (user.whatsapp && user.whatsapp.includes(term))
+            );
+            renderTable(filtered);
+        }
+
+        function renderTable(users) {
+            const tbody = document.getElementById('usersTableBody');
+            const totalCount = document.getElementById('totalCount');
+            tbody.innerHTML = '';
+            
+            if (totalCount) totalCount.innerText = users.length;
+
+            if (!Array.isArray(users) || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-gray-400">Nenhum usuário encontrado.</td></tr>';
+                return;
+            }
+
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-800 hover:bg-gray-800/30 transition';
+
+                const planColor = user.plan === 'premium' ? 'text-cyan-400' : (user.plan === 'pro' ? 'text-pink-400' : 'text-gray-400');
+                const statusColor = user.status === 'active' ? 'text-green-500' : 'text-red-500';
+                const statusText = user.status === 'active' ? 'ATIVO' : 'BLOQUEADO';
+
+                // Date Formatting
+                const formatDate = (dateStr) => {
+                    if (!dateStr) return '-';
+                    const [y, m, d] = dateStr.split('-');
+                    return `${d}/${m}/${y}`;
+                };
+
+                const createdAt = formatDate(user.created_at ? user.created_at.split('T')[0] : '');
+                
+                let dueDateDisplay = '-';
+                if (user.plan === 'free') {
+                    dueDateDisplay = '<span class="text-green-500 text-xs font-bold border border-green-800 bg-green-900/20 px-2 py-1 rounded">VITALÍCIO</span>';
+                } else if (user.due_date) {
+                    dueDateDisplay = formatDate(user.due_date);
+                } else {
+                    dueDateDisplay = '<button onclick="openPaymentModal('+user.id+', \''+(user.payment_status || 'pending')+'\', \'\')" class="text-yellow-500 hover:text-yellow-400 text-xs underline decoration-dotted underline-offset-4">Definir Data</button>';
+                }
+
+                // Payment Status Logic
+                let payBadgeClass = 'bg-gray-700 text-gray-300';
+                let payText = 'N/A';
+                let payIcon = '';
+                
+                const today = new Date().toISOString().split('T')[0];
+                const isLate = user.due_date && user.due_date < today;
+                const isPaid = user.payment_status === 'paid';
+                const isFree = user.plan === 'free';
+                
+                // Debug log para ajudar a identificar por que não aparece
+                if (user.payment_status === 'overdue' || (isLate && !isPaid)) {
+                    console.log(`Usuário Vencido Detectado: ${user.name} | Status: ${user.payment_status} | Data: ${user.due_date}`);
+                }
+
+                if (isFree) {
+                    payBadgeClass = 'bg-green-500 text-white shadow-lg shadow-green-900/50';
+                    payText = 'GRÁTIS';
+                } else if (user.payment_status === 'overdue' || (isLate && !isPaid)) {
+                    // Visual Reforçado para Vencidos
+                    payBadgeClass = 'bg-red-600 text-white shadow-lg shadow-red-900/50 animate-pulse font-bold tracking-wider';
+                    payText = 'VENCIDO';
+                    payIcon = '<i class="fas fa-exclamation-triangle mr-1"></i>';
+                } else if (isPaid) {
+                    payBadgeClass = 'bg-green-600 text-white shadow-lg shadow-green-900/50';
+                    payText = 'PAGO';
+                } else {
+                    // Pending cases
+                    if (!user.due_date) {
+                         payBadgeClass = 'bg-orange-600 text-white border border-orange-400 font-bold';
+                         payText = 'PENDENTE';
+                         payIcon = '<i class="fas fa-clock mr-1"></i>';
+                    } else {
+                         payBadgeClass = 'bg-yellow-600 text-white shadow-lg shadow-yellow-900/50';
+                         payText = 'PENDENTE';
+                    }
+                }
+
+                // Aplica estilo na linha inteira se estiver vencido
+                if (payText === 'VENCIDO') {
+                    // Usando !important via style para garantir que nada sobrescreva
+                    tr.style.backgroundColor = 'rgba(127, 29, 29, 0.3)'; // red-900 com 0.3 opacidade
+                    tr.style.borderLeft = '4px solid #dc2626'; // red-600
+                }
+
+                tr.innerHTML = `
+                    <td class="p-4 font-semibold text-white">
+                        ${user.name || 'Sem nome'}
+                    </td>
+                    <td class="p-4 text-gray-400">${user.email}</td>
+                    <td class="p-4 text-gray-400">${user.whatsapp || '-'}</td>
+                    <td class="p-4 text-gray-400">${user.cpf || '-'}</td>
+                    <td class="p-4 text-gray-400">${createdAt}</td>
+                    <td class="p-4 text-gray-400 ${payText === 'VENCIDO' ? 'text-red-400 font-bold' : ''}">${dueDateDisplay}</td>
+                    <td class="p-4 font-bold uppercase ${planColor}">${user.plan}</td>
+                    <td class="p-4">
+                        <button onclick="toggleRole(${user.id}, '${user.role}')" 
+                            class="px-2 py-1 rounded text-xs font-semibold transition ${user.role === 'admin' ? 'bg-purple-900 text-purple-300 hover:bg-purple-800' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">
+                            ${(user.role || 'user').toUpperCase()}
+                        </button>
+                    </td>
+                    <td class="p-4">
+                        <span class="px-2 py-1 rounded text-xs font-bold ${payBadgeClass} flex items-center justify-center w-fit">${payIcon}${payText}</span>
+                    </td>
+                    <td class="p-4">${user.client_count}</td>
+                    <td class="p-4 font-bold ${statusColor}">${statusText}</td>
+                    <td class="p-4 flex items-center gap-2">
+                        <button onclick="sendCharge(${user.id})" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs flex items-center gap-1 border border-green-800 transition shadow-lg shadow-green-900/50" title="Cobrar no WhatsApp">
+                            <i class="fab fa-whatsapp text-sm"></i>
+                        </button>
+                        <button onclick="openPaymentModal(${user.id}, '${user.payment_status || 'pending'}', '${user.due_date || ''}')" class="bg-green-900/50 hover:bg-green-800 text-green-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-green-800 transition" title="Alterar Pagamento">
+                            <i class="fas fa-dollar-sign"></i>
+                        </button>
+                        <button onclick="openPlanModal(${user.id}, '${user.plan}')" class="bg-blue-900/50 hover:bg-blue-800 text-blue-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-blue-800 transition" title="Alterar Plano">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                        <button onclick="toggleStatus(${user.id}, '${user.status}')" class="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-red-800 transition" title="Alterar Status">
+                            <i class="fas fa-power-off"></i>
+                        </button>
+                        <button onclick="resetPassword(${user.id})" class="bg-yellow-900/50 hover:bg-yellow-800 text-yellow-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-yellow-800 transition" title="Redefinir Senha">
+                            <i class="fas fa-key"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openCreateUserModal() {
+            document.getElementById('createUserModal').classList.remove('hidden');
+        }
+
+        function closeCreateUserModal() {
+            document.getElementById('createUserModal').classList.add('hidden');
+            // Clear fields
+            document.getElementById('newUserName').value = '';
+            document.getElementById('newUserEmail').value = '';
+            document.getElementById('newUserPassword').value = '';
+            document.getElementById('newUserWhatsapp').value = '';
+            document.getElementById('newUserCpf').value = '';
+        }
+
+        async function createUser() {
+            const name = document.getElementById('newUserName').value;
+            const email = document.getElementById('newUserEmail').value;
+            const password = document.getElementById('newUserPassword').value;
+            const whatsapp = document.getElementById('newUserWhatsapp').value;
+            const cpf = document.getElementById('newUserCpf').value;
+
+            if (!name || !email || !password) {
+                alert('Nome, Email e Senha são obrigatórios.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password, whatsapp, cpf })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('Usuário criado com sucesso!');
+                    closeCreateUserModal();
+                    loadUsers();
+                } else {
+                    alert('Erro ao criar usuário: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('Error creating user:', error);
+                alert('Erro de conexão.');
+            }
+        }
+
+        // Plan Modal
+        function openPlanModal(userId, currentPlan) {
+            document.getElementById('modalUserId').value = userId;
+            ['free', 'pro', 'premium'].forEach(p => {
+                document.getElementById(`check-${p}`).classList.add('hidden');
+            });
+            document.getElementById(`check-${currentPlan}`).classList.remove('hidden');
+            document.getElementById('planModal').classList.remove('hidden');
+        }
+
+        function closePlanModal() {
+            document.getElementById('planModal').classList.add('hidden');
+        }
+
+        function sendCharge(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            if (!user) return;
+
+            if (!user.whatsapp) {
+                alert('Este usuário não possui WhatsApp cadastrado.');
+                return;
+            }
+
+            const planPrice = pricing[user.plan] || 0;
+            if (planPrice === 0 && user.plan === 'free') {
+                alert('Usuários do plano Free não precisam ser cobrados.');
+                return;
+            }
+
+            const dueDate = user.due_date ? user.due_date.split('-').reverse().join('/') : 'a definir';
+            const pixInfo = adminPixKey ? `\n🔑 Chave PIX: *${adminPixKey}*` : '\n(Chave PIX não configurada no painel)';
+            
+            const message = `Olá *${user.name}*! 👋\n\nSua fatura do plano *${user.plan.toUpperCase()}* está disponível.\n\n📅 Vencimento: *${dueDate}*\n💰 Valor: *R$ ${planPrice.toFixed(2).replace('.', ',')}*\n${pixInfo}\n\nPor favor, envie o comprovante por aqui para liberarmos seu acesso. Obrigado! 🚀`;
+            
+            const url = `https://wa.me/${user.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+
+        async function toggleRole(userId, currentRole) {
+            const newRole = currentRole === 'admin' ? 'user' : 'admin';
+            const confirmMsg = newRole === 'admin' 
+                ? 'Tem certeza que deseja promover este usuário a ADMIN?' 
+                : 'Tem certeza que deseja remover o acesso de ADMIN deste usuário?';
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}/role`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newRole })
+                });
+
+                if (response.ok) {
+                    alert(`Usuário alterado para ${newRole.toUpperCase()} com sucesso!`);
+                    loadUsers();
+                } else {
+                    alert('Erro ao alterar permissão.');
+                }
+            } catch (error) {
+                console.error('Error toggling role:', error);
+            }
+        }
+
+        // Payment Modal
+        function openPaymentModal(userId, currentStatus, dueDate) {
+            document.getElementById('modalPaymentUserId').value = userId;
+            document.getElementById('paymentDueDate').value = dueDate || '';
+
+            ['paid', 'pending', 'overdue'].forEach(s => {
+                document.getElementById(`check-pay-${s}`).classList.add('hidden');
+            });
+            // If status is valid, show check
+            if(['paid', 'pending', 'overdue'].includes(currentStatus)) {
+                document.getElementById(`check-pay-${currentStatus}`).classList.remove('hidden');
+            }
+            document.getElementById('paymentModal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.add('hidden');
+        }
+
+        async function savePayment(status) {
+            const userId = document.getElementById('modalPaymentUserId').value;
+            const dueDate = document.getElementById('paymentDueDate').value;
+            
+            try {
+                await fetch(`${API_URL}/admin/users/${userId}/payment_status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        payment_status: status,
+                        due_date: dueDate
+                    })
+                });
+                closePaymentModal();
+                loadUsers();
+            } catch (error) {
+                console.error('Error updating payment status:', error);
+            }
+        }
+
+        async function savePlan(plan) {
+            const userId = document.getElementById('modalUserId').value;
+            try {
+                await fetch(`${API_URL}/admin/users/${userId}/plan`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan })
+                });
+                closePlanModal();
+                loadUsers();
+            } catch (error) {
+                console.error('Error updating plan:', error);
+            }
+        }
+
+        // Status Toggle
+        async function toggleStatus(userId, currentStatus) {
+            const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
+            if (!confirm(`Deseja alterar o status para ${newStatus === 'active' ? 'ATIVO' : 'BLOQUEADO'}?`)) return;
+
+            try {
+                await fetch(`${API_URL}/admin/users/${userId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                loadUsers();
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        }
+
+        // Reset Password
+        async function resetPassword(userId) {
+            const newPassword = prompt("Digite a nova senha para o usuário:");
+            if (!newPassword) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: newPassword })
+                });
+                
+                if (response.ok) {
+                    alert("Senha alterada com sucesso!");
+                } else {
+                    alert("Erro ao alterar senha.");
+                }
+            } catch (error) {
+                console.error('Error resetting password:', error);
+                alert("Erro de conexão.");
+            }
+        }
+
+        // Initial load
+        loadSettings();
+        loadUsers();
+    </script>
+</body>
+</html>
