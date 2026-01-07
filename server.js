@@ -33,6 +33,11 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Redirect root to login
+app.get('/', (req, res) => {
+    res.redirect('/login.html');
+});
+
 // Database Setup
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'clients.db');
 
