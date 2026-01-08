@@ -85,7 +85,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
             whatsapp TEXT,
             cpf TEXT,
             plan TEXT DEFAULT 'free',
-            status TEXT DEFAULT 'active'
+            status TEXT DEFAULT 'active',
+            role TEXT DEFAULT 'user'
         )`, (err) => {
             if (err) console.error(err);
             
@@ -93,6 +94,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
             const columnsToAdd = [
                 "ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'",
                 "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'",
+                "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
                 "ALTER TABLE users ADD COLUMN name TEXT",
                 "ALTER TABLE users ADD COLUMN whatsapp TEXT",
                 "ALTER TABLE users ADD COLUMN cpf TEXT",
