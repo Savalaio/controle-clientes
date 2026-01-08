@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = 3000; // Force port 3000 as requested for Easypanel
@@ -227,6 +228,17 @@ function seedUsers() {
         }
     });
 }
+
+// Email Configuration
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: process.env.SMTP_PORT || 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    }
+});
 
 // Routes
 
@@ -514,13 +526,35 @@ app.post('/api/register', (req, res) => {
     });
 });
 
-// Forgot Password (Mock)
+// Forgot Password
 app.post('/api/forgot-password', (req, res) => {
     const { email } = req.body;
-    // In a real app, you would generate a token and send an email here.
-    // We will just simulate success.
-    console.log(`[Mock] Password reset requested for: ${email}`);
-    res.json({ message: "success" });
+    
+    db.get("SELECT * FROM users WHERE email = ?", [email], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(404).json({ error: "E-mail não encontrado." });
+
+        if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+            console.error("SMTP credentials not configured");
+            return res.status(500).json({ error: "Servidor de e-mail não configurado." });
+        }
+
+        const mailOptions = {
+            from: `"Meus Clientes" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: 'Recuperação de Senha - Meus Clientes',
+            text: `Olá ${user.name},\n\nRecebemos uma solicitação de recuperação de senha.\n\nSua senha é: ${user.password}\n\nAcesse: ${req.protocol}://${req.get('host')}/login.html\n\nSe você não solicitou isso, ignore este e-mail.`
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.error("Erro ao enviar email:", error);
+                return res.status(500).json({ error: "Erro ao enviar e-mail. Verifique os logs." });
+            }
+            console.log('Email enviado: ' + info.response);
+            res.json({ message: "success" });
+        });
+    });
 });
 
 app.get('/api/user/payment', (req, res) => {
