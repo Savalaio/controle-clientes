@@ -8,7 +8,7 @@ const multer = require('multer');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000; // Force port 3000 as requested for Easypanel
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'public', 'uploads');
