@@ -77,20 +77,22 @@ const db = new sqlite3.Database(dbPath, (err) => {
         });
 
         // Create Users Table
-        db.run(`CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            email TEXT UNIQUE,
-            password TEXT,
-            whatsapp TEXT,
-            cpf TEXT,
-            plan TEXT DEFAULT 'free',
-            status TEXT DEFAULT 'active',
-            role TEXT DEFAULT 'user'
-        )`, (err) => {
-            if (err) console.error(err);
+        db.serialize(() => {
+            db.run(`CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                email TEXT UNIQUE,
+                password TEXT,
+                whatsapp TEXT,
+                cpf TEXT,
+                plan TEXT DEFAULT 'free',
+                status TEXT DEFAULT 'active',
+                role TEXT DEFAULT 'user'
+            )`, (err) => {
+                if (err) console.error(err);
+            });
             
-            // Migration: Add columns if they don't exist (for existing databases)
+            // Migration: Add columns if they don't exist
             const columnsToAdd = [
                 "ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'",
                 "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'",
@@ -104,16 +106,13 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 "ALTER TABLE users ADD COLUMN logo TEXT"
             ];
 
-            let completed = 0;
             columnsToAdd.forEach(sql => {
                 db.run(sql, (err) => {
                     // Ignore error if column already exists
-                    completed++;
-                    if (completed === columnsToAdd.length) {
-                        seedUsers();
-                    }
                 });
             });
+
+            seedUsers();
         });
         
         db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
@@ -174,8 +173,10 @@ function seedUsers() {
     const adminEmail = 'realizadorsonho@gmail.com';
     db.get("SELECT * FROM users WHERE email = ?", [adminEmail], (err, row) => {
         if (!row) {
-            db.run("INSERT INTO users (name, email, password, plan, status, role) VALUES (?, ?, ?, ?, ?, ?)", ['Administrador', adminEmail, '123456', 'premium', 'active', 'admin']);
-            console.log(`Usuário padrão criado: ${adminEmail} / 123456`);
+            db.run("INSERT INTO users (name, email, password, plan, status, role) VALUES (?, ?, ?, ?, ?, ?)", ['Administrador', adminEmail, '123456', 'premium', 'active', 'admin'], (err) => {
+                if (err) console.error("Erro ao criar usuário padrão:", err.message);
+                else console.log(`Usuário padrão criado: ${adminEmail} / 123456`);
+            });
         }
     });
     
