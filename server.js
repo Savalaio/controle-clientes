@@ -113,6 +113,27 @@ const db = new sqlite3.Database(dbPath, (err) => {
             });
 
             seedUsers();
+            
+            // Verify schema and start server
+            db.all("PRAGMA table_info(users)", (err, rows) => {
+                if (err) {
+                    console.error("CRITICAL ERROR: Could not verify table schema:", err);
+                    return;
+                }
+                const hasRole = rows.some(r => r.name === 'role');
+                if (!hasRole) {
+                    console.error("CRITICAL ERROR: 'role' column missing in users table after migration!");
+                    // Attempt emergency fix
+                    db.run("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'", (err) => {
+                        if (err) console.error("Emergency fix failed:", err);
+                        else console.log("Emergency fix applied: 'role' column added.");
+                        startServer();
+                    });
+                } else {
+                    console.log("Database schema verified: 'role' column exists.");
+                    startServer();
+                }
+            });
         });
         
         db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
@@ -143,6 +164,12 @@ const db = new sqlite3.Database(dbPath, (err) => {
         runSubscriptionsGeneration();
     }
 });
+
+function startServer() {
+    app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+    });
+}
 
 function runSubscriptionsGeneration() {
     const today = new Date();
@@ -880,6 +907,4 @@ app.get('/share-invoice', (req, res) => {
     res.send(html);
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+// Server listening handled by startServer()
