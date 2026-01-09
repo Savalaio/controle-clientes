@@ -118,7 +118,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 "ALTER TABLE users ADD COLUMN payment_instructions TEXT",
                 "ALTER TABLE users ADD COLUMN logo TEXT",
                 "ALTER TABLE users ADD COLUMN smtp_user TEXT",
-                "ALTER TABLE users ADD COLUMN smtp_pass TEXT"
+                "ALTER TABLE users ADD COLUMN smtp_pass TEXT",
+                "ALTER TABLE users ADD COLUMN created_at TEXT"
             ];
 
             columnsToAdd.forEach(sql => {
