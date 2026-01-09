@@ -433,6 +433,10 @@ async function loadPaymentPrefs() {
         if (pixEl && prefs?.payment_pix_key) pixEl.value = prefs.payment_pix_key;
         if (instEl && prefs?.payment_instructions) instEl.value = prefs.payment_instructions;
         
+        // Load SMTP
+        if (prefs?.smtp_user) document.getElementById('smtpUser').value = prefs.smtp_user;
+        if (prefs?.smtp_pass) document.getElementById('smtpPass').value = prefs.smtp_pass;
+
         // Load Logo
         if (prefs?.logo) {
             const preview = document.getElementById('logoPreview');
@@ -506,12 +510,25 @@ async function savePaymentPrefs() {
     const methodEl = document.getElementById('paymentMethod');
     const pixEl = document.getElementById('paymentPixKey');
     const instEl = document.getElementById('paymentInstructions');
+    const smtpUser = document.getElementById('smtpUser').value;
+    const smtpPass = document.getElementById('smtpPass').value;
+
     const body = {
         payment_method: methodEl ? methodEl.value : 'whatsapp',
         payment_pix_key: pixEl ? pixEl.value : null,
         payment_instructions: instEl ? instEl.value : null
     };
     try {
+        // Save SMTP first
+        await fetch(`${API_URL}/user/smtp`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-user-id': currentUserId 
+            },
+            body: JSON.stringify({ smtp_user: smtpUser, smtp_pass: smtpPass })
+        });
+
         const res = await fetch(`${API_URL}/user/payment`, {
             method: 'PUT',
             headers: { 

@@ -105,7 +105,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 "ALTER TABLE users ADD COLUMN payment_method TEXT DEFAULT 'whatsapp'",
                 "ALTER TABLE users ADD COLUMN payment_pix_key TEXT",
                 "ALTER TABLE users ADD COLUMN payment_instructions TEXT",
-                "ALTER TABLE users ADD COLUMN logo TEXT"
+                "ALTER TABLE users ADD COLUMN logo TEXT",
+                "ALTER TABLE users ADD COLUMN smtp_user TEXT",
+                "ALTER TABLE users ADD COLUMN smtp_pass TEXT"
             ];
 
             columnsToAdd.forEach(sql => {
@@ -195,9 +197,9 @@ function runSubscriptionsGeneration() {
                     if (sub.email) {
                          db.get("SELECT payment_pix_key, payment_instructions FROM users WHERE id = ?", [sub.user_id], (err, userSettings) => {
                              if (!err && userSettings) {
-                                 const html = getInvoiceHtml(sub.name, sub.value, due_date, sub.product, userSettings.payment_pix_key, userSettings.payment_instructions);
-                                 sendClientEmail(sub.email, `Fatura Recorrente - ${sub.product}`, html);
-                             }
+                                const html = getInvoiceHtml(sub.name, sub.value, due_date, sub.product, userSettings.payment_pix_key, userSettings.payment_instructions);
+                                sendClientEmail(sub.user_id, sub.email, `Fatura Recorrente - ${sub.product}`, html);
+                            }
                          });
                     }
 
@@ -252,20 +254,45 @@ const transporter = nodemailer.createTransport({
 });
 
 // Email Helper Function
-function sendClientEmail(to, subject, htmlContent) {
-    if (!to || !process.env.SMTP_USER || !process.env.SMTP_PASS) return;
+function sendClientEmail(userId, to, subject, htmlContent) {
+    if (!to) return;
 
-    const mailOptions = {
-        from: `"Meus Clientes" <${process.env.SMTP_USER}>`,
-        to: to,
-        subject: subject,
-        html: htmlContent
+    // Helper to send using specific credentials
+    const send = (user, pass) => {
+        if (!user || !pass) {
+            console.log("Sem credenciais SMTP para envio.");
+            return;
+        }
+        const transport = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: process.env.SMTP_PORT || 587,
+            secure: false,
+            auth: { user, pass }
+        });
+        const mailOptions = {
+            from: `"Meus Clientes" <${user}>`,
+            to: to,
+            subject: subject,
+            html: htmlContent
+        };
+        transport.sendMail(mailOptions, (error, info) => {
+            if (error) console.error("Erro ao enviar email para cliente:", error);
+            else console.log('Email enviado para cliente: ' + info.response);
+        });
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
-        if (error) console.error("Erro ao enviar email para cliente:", error);
-        else console.log('Email enviado para cliente: ' + info.response);
-    });
+    if (userId) {
+        db.get("SELECT smtp_user, smtp_pass FROM users WHERE id = ?", [userId], (err, row) => {
+            if (!err && row && row.smtp_user && row.smtp_pass) {
+                send(row.smtp_user, row.smtp_pass);
+            } else {
+                // Fallback to system env
+                send(process.env.SMTP_USER, process.env.SMTP_PASS);
+            }
+        });
+    } else {
+        send(process.env.SMTP_USER, process.env.SMTP_PASS);
+    }
 }
 
 function getInvoiceHtml(clientName, value, dueDate, product, pixKey, instructions) {
@@ -618,13 +645,23 @@ app.get('/api/user/payment', (req, res) => {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     db.get(
-        "SELECT payment_method, payment_pix_key, payment_instructions, logo FROM users WHERE id = ?",
+        "SELECT payment_method, payment_pix_key, payment_instructions, logo, smtp_user, smtp_pass FROM users WHERE id = ?",
         [userId],
         (err, row) => {
             if (err) return res.status(500).json({ error: err.message });
             res.json(row || { payment_method: 'whatsapp' });
         }
     );
+});
+
+app.put('/api/user/smtp', (req, res) => {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { smtp_user, smtp_pass } = req.body;
+    db.run("UPDATE users SET smtp_user = ?, smtp_pass = ? WHERE id = ?", [smtp_user, smtp_pass, userId], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'success' });
+    });
 });
 
 app.put('/api/user/payment', (req, res) => {
@@ -776,7 +813,7 @@ app.post('/api/clients', (req, res) => {
                 db.get("SELECT payment_pix_key, payment_instructions FROM users WHERE id = ?", [userId], (err, userSettings) => {
                     if (!err && userSettings) {
                         const html = getInvoiceHtml(name, value, due_date, product, userSettings.payment_pix_key, userSettings.payment_instructions);
-                        sendClientEmail(email, `Nova Fatura - ${product}`, html);
+                        sendClientEmail(userId, email, `Nova Fatura - ${product}`, html);
                     }
                 });
             }
@@ -864,7 +901,7 @@ app.post('/api/clients/:id/email', (req, res) => {
             
             const html = getInvoiceHtml(client.name, client.value, client.due_date, client.product, userSettings?.payment_pix_key, userSettings?.payment_instructions);
             
-            sendClientEmail(client.email, `Lembrete de Fatura - ${client.product}`, html);
+            sendClientEmail(userId, client.email, `Lembrete de Fatura - ${client.product}`, html);
             res.json({ message: "E-mail enviado com sucesso!" });
         });
     });
