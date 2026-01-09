@@ -20,6 +20,9 @@ RUN npm rebuild sqlite3 --build-from-source
 RUN mkdir -p data && chmod 777 data
 RUN mkdir -p public/uploads && chmod 777 public/uploads
 
+# Define volumes for persistence
+VOLUME ["/app/data", "/app/public/uploads"]
+
 # Expose port
 EXPOSE 3000
 
