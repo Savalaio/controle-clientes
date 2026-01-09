@@ -190,6 +190,17 @@ function runSubscriptionsGeneration() {
                 params,
                 function(err2) {
                     if (err2) return;
+                    
+                    // Send Email
+                    if (sub.email) {
+                         db.get("SELECT payment_pix_key, payment_instructions FROM users WHERE id = ?", [sub.user_id], (err, userSettings) => {
+                             if (!err && userSettings) {
+                                 const html = getInvoiceHtml(sub.name, sub.value, due_date, sub.product, userSettings.payment_pix_key, userSettings.payment_instructions);
+                                 sendClientEmail(sub.email, `Fatura Recorrente - ${sub.product}`, html);
+                             }
+                         });
+                    }
+
                     db.run("UPDATE subscriptions SET last_generated_month = ? WHERE id = ?", [currentMonth, sub.id]);
                 }
             );
@@ -239,6 +250,52 @@ const transporter = nodemailer.createTransport({
         pass: process.env.SMTP_PASS
     }
 });
+
+// Email Helper Function
+function sendClientEmail(to, subject, htmlContent) {
+    if (!to || !process.env.SMTP_USER || !process.env.SMTP_PASS) return;
+
+    const mailOptions = {
+        from: `"Meus Clientes" <${process.env.SMTP_USER}>`,
+        to: to,
+        subject: subject,
+        html: htmlContent
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) console.error("Erro ao enviar email para cliente:", error);
+        else console.log('Email enviado para cliente: ' + info.response);
+    });
+}
+
+function getInvoiceHtml(clientName, value, dueDate, product, pixKey, instructions) {
+    return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+        <h2 style="color: #333;">Olá, ${clientName}</h2>
+        <p>Você tem uma nova cobrança gerada.</p>
+        
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p><strong>Produto/Serviço:</strong> ${product}</p>
+            <p><strong>Valor:</strong> R$ ${value}</p>
+            <p><strong>Vencimento:</strong> ${dueDate}</p>
+        </div>
+
+        ${pixKey ? `
+        <div style="margin-bottom: 20px;">
+            <h3 style="color: #007bff;">Pagamento via PIX</h3>
+            <p>Chave PIX: <strong>${pixKey}</strong></p>
+        </div>` : ''}
+
+        ${instructions ? `
+        <div style="margin-bottom: 20px;">
+            <h3>Instruções</h3>
+            <p>${instructions}</p>
+        </div>` : ''}
+
+        <p style="font-size: 12px; color: #777;">Este é um e-mail automático. Por favor, não responda.</p>
+    </div>
+    `;
+}
 
 // Routes
 
@@ -713,6 +770,17 @@ app.post('/api/clients', (req, res) => {
                 res.status(400).json({ error: err.message });
                 return;
             }
+            
+            // Send Email Notification if email provided
+            if (email) {
+                db.get("SELECT payment_pix_key, payment_instructions FROM users WHERE id = ?", [userId], (err, userSettings) => {
+                    if (!err && userSettings) {
+                        const html = getInvoiceHtml(name, value, due_date, product, userSettings.payment_pix_key, userSettings.payment_instructions);
+                        sendClientEmail(email, `Nova Fatura - ${product}`, html);
+                    }
+                });
+            }
+
             res.json({
                 message: "success",
                 data: { id: this.lastID, ...req.body, status: 'Pendente' }
@@ -776,6 +844,29 @@ app.delete('/api/clients/:id', (req, res) => {
             return;
         }
         res.json({ message: "deleted", changes: this.changes });
+    });
+});
+
+// Resend Client Email
+app.post('/api/clients/:id/email', (req, res) => {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { id } = req.params;
+
+    db.get("SELECT * FROM clients WHERE id = ? AND user_id = ?", [id, userId], (err, client) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!client) return res.status(404).json({ error: "Cliente/Fatura não encontrada" });
+        if (!client.email) return res.status(400).json({ error: "Cliente sem e-mail cadastrado" });
+
+        db.get("SELECT payment_pix_key, payment_instructions FROM users WHERE id = ?", [userId], (err, userSettings) => {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            const html = getInvoiceHtml(client.name, client.value, client.due_date, client.product, userSettings?.payment_pix_key, userSettings?.payment_instructions);
+            
+            sendClientEmail(client.email, `Lembrete de Fatura - ${client.product}`, html);
+            res.json({ message: "E-mail enviado com sucesso!" });
+        });
     });
 });
 

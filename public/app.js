@@ -299,6 +299,10 @@ function renderTable(clients) {
                             class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Cobrar no WhatsApp">
                         <i class="fas fa-comment"></i>
                     </button>
+                    <button onclick="sendEmail(${client.id})" 
+                            class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Reenviar E-mail">
+                        <i class="fas fa-envelope"></i>
+                    </button>
                     ${!isPaid ? `
                         <button onclick="markAsPaid(${client.id})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Marcar como Pago">
                             <i class="fas fa-check"></i>
@@ -572,24 +576,41 @@ async function sendWhatsapp(phone, name, product, value, dueDate) {
                      client_name: name,
                      value: formattedValue,
                      due_date: formattedDate,
-                     logo: currentPaymentPrefs.logo
+                     pix_key: currentPaymentPrefs?.payment_pix_key || '',
+                     instructions: currentPaymentPrefs?.payment_instructions || ''
                  })
              });
-             
-             if (res.ok) {
-                 const data = await res.json();
-                 message += `\n\nVer fatura: ${data.url}`;
-             } else {
-                 // Fallback if fails
-                 console.error('Failed to generate short link');
+             const data = await res.json();
+             if (data.url) {
+                 message += `\n\nAcesse sua fatura: ${data.url}`;
              }
-         } catch (e) {
-             console.error('Error generating short link', e);
-         }
+         } catch(e) { console.error(e); }
     }
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+}
+
+async function sendEmail(clientId) {
+    if (!confirm('Deseja reenviar o e-mail de cobrança para este cliente?')) return;
     
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    try {
+        const response = await fetch(`${API_URL}/clients/${clientId}/email`, {
+            method: 'POST',
+            headers: { 'x-user-id': currentUserId }
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('E-mail enviado com sucesso!');
+        } else {
+            alert(data.error || 'Erro ao enviar e-mail.');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro de conexão ao enviar e-mail.');
+    }
 }
 
 // Debounce search
