@@ -280,13 +280,6 @@ async function loadClients() {
 
         const data = result.data || [];
         
-        // DEBUG: Alertar se achou clientes mas nao apareceu
-        if (data.length > 0) {
-            console.log("Clientes carregados: " + data.length);
-        } else {
-            console.log("Nenhum cliente retornado pela API.");
-        }
-        
         renderTable(data);
     } catch (error) {
         console.error('Error loading clients:', error);
@@ -297,13 +290,9 @@ async function loadClients() {
 
 // Render Table
 function renderTable(clients) {
-    logDebug("Renderizando tabela. Qtd: " + (clients ? clients.length : 'null'));
     allClients = clients || [];
     const tbody = document.getElementById('clientsTableBody');
-    if (!tbody) {
-        logDebug("ERRO CRITICO: tbody clientsTableBody nao encontrado!");
-        return;
-    }
+    if (!tbody) return;
     
     tbody.innerHTML = '';
 

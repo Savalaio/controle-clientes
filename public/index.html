@@ -33,21 +33,6 @@
     </style>
 </head>
 <body class="p-8 font-sans">
-    <div id="debug-console" style="background: #330000; color: #ff9999; padding: 10px; font-family: monospace; font-size: 12px; display: none;"></div>
-    <script>
-        function logDebug(msg) {
-            const el = document.getElementById('debug-console');
-            if(el) {
-                el.style.display = 'block';
-                el.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + msg + '</div>';
-            }
-            console.log(msg);
-        }
-        window.onerror = function(msg, url, line) {
-            logDebug("ERROR: " + msg + " at " + line);
-        };
-    </script>
-
     <div class="max-w-7xl mx-auto">
         <!-- Header -->
         <div class="flex justify-between items-center mb-8">
