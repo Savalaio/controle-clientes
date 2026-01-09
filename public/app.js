@@ -295,67 +295,77 @@ function renderTable(clients) {
     }
 
     clients.forEach(client => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-gray-800 transition';
-        
-        const isPaid = client.status === 'Pago';
-        
-        let displayStatus = client.status;
-        let displayStatusClass = 'bg-gray-700 text-gray-300';
-        
-        const today = new Date().toISOString().split('T')[0];
-        if (client.status === 'Pago') {
-            displayStatusClass = 'bg-green-900/50 text-green-400 border border-green-800';
-        } else if (client.due_date < today) {
-            displayStatus = '⚠️ VENCIDO'; 
-            displayStatusClass = 'bg-red-600 text-white border border-red-500 animate-pulse font-bold shadow-lg shadow-red-500/50';
-        } else {
-            displayStatusClass = 'bg-blue-900/50 text-blue-400 border border-blue-800';
-        }
+        try {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-800 transition border-b border-gray-800'; // Added border-b for visibility
+            
+            const isPaid = client.status === 'Pago';
+            
+            let displayStatus = client.status;
+            let displayStatusClass = 'bg-gray-700 text-gray-300';
+            
+            const today = new Date().toISOString().split('T')[0];
+            if (client.status === 'Pago') {
+                displayStatusClass = 'bg-green-900/50 text-green-400 border border-green-800';
+            } else if (client.due_date < today) {
+                displayStatus = '⚠️ VENCIDO'; 
+                displayStatusClass = 'bg-red-600 text-white border border-red-500 animate-pulse font-bold shadow-lg shadow-red-500/50';
+            } else {
+                displayStatusClass = 'bg-blue-900/50 text-blue-400 border border-blue-800';
+            }
 
-        // Prepare client object for edit (escape quotes)
-        // const clientData = JSON.stringify(client).replace(/"/g, '&quot;');
+            // Safe Access Helpers
+            const safeName = client.name || 'Sem Nome';
+            const safeEmail = client.email || '-';
+            const safePhone = client.phone || '-';
+            const safeProduct = client.product || '-';
+            const safeValue = client.value !== undefined ? client.value : 0;
+            const safeDueDate = client.due_date || '';
+            const safeId = client.id;
 
-        tr.innerHTML = `
-            <td class="p-4 font-semibold">${client.name}</td>
-            <td class="p-4 text-sm">
-                <div class="text-white">${client.email || '-'}</div>
-                <div class="text-gray-500 text-xs">${client.phone || '-'}</div>
-            </td>
-            <td class="p-4">${client.product}</td>
-            <td class="p-4">${formatDate(client.due_date)}</td>
-            <td class="p-4 font-mono">${formatCurrency(client.value)}</td>
-            <td class="p-4">
-                <span class="px-2 py-1 rounded text-xs font-bold ${displayStatusClass}">
-                    ${displayStatus}
-                </span>
-            </td>
-            <td class="p-4 text-sm text-gray-400">${client.paid_at ? formatDate(client.paid_at) : '-'}</td>
-            <td class="p-4 text-center">
-                <div class="flex items-center justify-center gap-2">
-                    <button onclick="sendWhatsapp('${client.phone}', '${client.name}', '${client.product}', ${client.value}, '${client.due_date}')" 
-                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Cobrar no WhatsApp">
-                        <i class="fas fa-comment"></i>
-                    </button>
-                    <button onclick="sendEmail(${client.id})" 
-                            class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Reenviar E-mail">
-                        <i class="fas fa-envelope"></i>
-                    </button>
-                    ${!isPaid ? `
-                        <button onclick="markAsPaid(${client.id})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Marcar como Pago">
-                            <i class="fas fa-check"></i>
+            tr.innerHTML = `
+                <td class="p-4 font-semibold text-white">${safeName}</td>
+                <td class="p-4 text-sm">
+                    <div class="text-white">${safeEmail}</div>
+                    <div class="text-gray-500 text-xs">${safePhone}</div>
+                </td>
+                <td class="p-4 text-gray-300">${safeProduct}</td>
+                <td class="p-4 text-gray-300">${formatDate(safeDueDate)}</td>
+                <td class="p-4 font-mono text-white">${formatCurrency(safeValue)}</td>
+                <td class="p-4">
+                    <span class="px-2 py-1 rounded text-xs font-bold ${displayStatusClass} inline-block">
+                        ${displayStatus}
+                    </span>
+                </td>
+                <td class="p-4 text-sm text-gray-400">${client.paid_at ? formatDate(client.paid_at) : '-'}</td>
+                <td class="p-4 text-center">
+                    <div class="flex items-center justify-center gap-2">
+                        <button onclick="sendWhatsapp('${safePhone}', '${safeName}', '${safeProduct}', ${safeValue}, '${safeDueDate}')" 
+                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Cobrar no WhatsApp">
+                            <i class="fas fa-comment"></i>
                         </button>
-                    ` : ''}
-                    <button onclick="openEditModal(${client.id})" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Editar">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="deleteClient(${client.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" title="Excluir">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(tr);
+                        <button onclick="sendEmail(${safeId})" 
+                                class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Reenviar E-mail">
+                            <i class="fas fa-envelope"></i>
+                        </button>
+                        ${!isPaid ? `
+                            <button onclick="markAsPaid(${safeId})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Marcar como Pago">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        ` : ''}
+                        <button onclick="openEditModal(${safeId})" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteClient(${safeId})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        } catch (err) {
+            console.error('Error rendering row:', err, client);
+        }
     });
 }
 
