@@ -4,6 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meus Clientes</title>
+    <script>
+        // Auth Guard (Executa antes de renderizar qualquer coisa)
+        (function() {
+            try {
+                const token = localStorage.getItem('user_token');
+                if (!token) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                const user = JSON.parse(token);
+                if (!user || !user.id) {
+                    localStorage.removeItem('user_token');
+                    window.location.href = 'login.html';
+                }
+            } catch (e) {
+                localStorage.removeItem('user_token');
+                window.location.href = 'login.html';
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
