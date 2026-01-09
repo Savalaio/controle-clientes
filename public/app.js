@@ -265,6 +265,13 @@ async function loadClients() {
         const result = await response.json();
         
         if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                // Token invalido ou usuario deletado
+                console.warn("Sessao invalida detectada em loadClients");
+                localStorage.removeItem('user_token');
+                window.location.href = 'login.html';
+                return;
+            }
             console.error('Server error:', result.error);
             document.getElementById('clientsTableBody').innerHTML = 
                 `<tr><td colspan="8" class="p-4 text-center text-red-500">Erro ao carregar: ${result.error || 'Erro desconhecido'}</td></tr>`;

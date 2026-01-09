@@ -41,7 +41,18 @@ app.get('/', (req, res) => {
 });
 
 // Database Setup
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'clients.db');
+let dbPath = process.env.DB_PATH;
+if (!dbPath) {
+    // Check if /app/data exists (Docker volume standard)
+    const dockerDataDir = '/app/data';
+    if (fs.existsSync(dockerDataDir)) {
+        dbPath = path.join(dockerDataDir, 'clients.db');
+        console.log('Detectado ambiente Docker com volume, usando banco em:', dbPath);
+    } else {
+        dbPath = path.join(__dirname, 'clients.db');
+        console.log('Usando banco local:', dbPath);
+    }
+}
 
 // Ensure database directory exists
 const dbDir = path.dirname(dbPath);
