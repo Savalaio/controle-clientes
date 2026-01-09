@@ -290,9 +290,13 @@ async function loadClients() {
 
 // Render Table
 function renderTable(clients) {
+    logDebug("Renderizando tabela. Qtd: " + (clients ? clients.length : 'null'));
     allClients = clients || [];
     const tbody = document.getElementById('clientsTableBody');
-    if (!tbody) return;
+    if (!tbody) {
+        logDebug("ERRO CRITICO: tbody clientsTableBody nao encontrado!");
+        return;
+    }
     
     tbody.innerHTML = '';
 
@@ -301,7 +305,7 @@ function renderTable(clients) {
         return;
     }
 
-    clients.forEach(client => {
+    clients.forEach((client, index) => {
         try {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-gray-800 transition border-b border-gray-800'; // Added border-b for visibility
