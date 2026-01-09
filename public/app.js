@@ -272,6 +272,7 @@ async function loadClients() {
         }
 
         const data = result.data || [];
+        console.log('Clientes carregados:', data.length); // Debug info
         renderTable(data);
     } catch (error) {
         console.error('Error loading clients:', error);
