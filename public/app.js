@@ -117,7 +117,8 @@ async function loadStats() {
         const response = await fetch(`${API_URL}/stats`, {
             headers: { 'x-user-id': currentUserId }
         });
-        const { data } = await response.json();
+        const result = await response.json();
+        const data = result.data || {};
         
         document.getElementById('totalPending').textContent = formatCurrency(data.pending_value || 0);
         document.getElementById('totalOverdue').textContent = formatCurrency(data.overdue_value || 0);
@@ -238,20 +239,33 @@ async function loadClients() {
         const response = await fetch(url, {
             headers: { 'x-user-id': currentUserId }
         });
-        const { data } = await response.json();
+        const result = await response.json();
+        
+        if (!response.ok) {
+            console.error('Server error:', result.error);
+            document.getElementById('clientsTableBody').innerHTML = 
+                `<tr><td colspan="8" class="p-4 text-center text-red-500">Erro ao carregar: ${result.error || 'Erro desconhecido'}</td></tr>`;
+            return;
+        }
+
+        const data = result.data || [];
         renderTable(data);
     } catch (error) {
         console.error('Error loading clients:', error);
+        document.getElementById('clientsTableBody').innerHTML = 
+            `<tr><td colspan="8" class="p-4 text-center text-red-500">Erro de conexão. Verifique o console.</td></tr>`;
     }
 }
 
 // Render Table
 function renderTable(clients) {
-    allClients = clients;
+    allClients = clients || [];
     const tbody = document.getElementById('clientsTableBody');
+    if (!tbody) return;
+    
     tbody.innerHTML = '';
 
-    if (clients.length === 0) {
+    if (!clients || clients.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">Nenhum cliente encontrado.</td></tr>';
         return;
     }
