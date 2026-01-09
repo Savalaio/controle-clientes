@@ -279,7 +279,14 @@ async function loadClients() {
         }
 
         const data = result.data || [];
-        console.log('Clientes carregados:', data.length); // Debug info
+        
+        // DEBUG: Alertar se achou clientes mas nao apareceu
+        if (data.length > 0) {
+            console.log("Clientes carregados: " + data.length);
+        } else {
+            console.log("Nenhum cliente retornado pela API.");
+        }
+        
         renderTable(data);
     } catch (error) {
         console.error('Error loading clients:', error);
