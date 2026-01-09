@@ -151,7 +151,7 @@ function renderChart(data) {
     financeChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Recebido (Total)', 'Pendente', 'Vencido'],
+            labels: ['Recebido', 'Pendente', 'Vencido'],
             datasets: [{
                 label: 'Valores (R$)',
                 data: [data.total_received || 0, data.pending_value || 0, data.overdue_value || 0],
@@ -165,7 +165,9 @@ function renderChart(data) {
                     'rgba(234, 179, 8, 1)',
                     'rgba(239, 68, 68, 1)'
                 ],
-                borderWidth: 1
+                borderWidth: 1,
+                borderRadius: 5,
+                barThickness: 40
             }]
         },
         options: {
@@ -173,14 +175,33 @@ function renderChart(data) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    labels: { color: '#cbd5e1' }
+                    labels: { color: '#cbd5e1', font: { size: 12 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: { color: '#334155' },
-                    ticks: { color: '#cbd5e1' }
+                    grid: { color: 'rgba(51, 65, 85, 0.5)' },
+                    ticks: { 
+                        color: '#cbd5e1',
+                        callback: function(value) {
+                            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumSignificantDigits: 3 }).format(value);
+                        }
+                    }
                 },
                 x: {
                     grid: { display: false },
@@ -227,7 +248,9 @@ function exportCSV() {
 // Fetch Clients
 async function loadClients() {
     const search = document.getElementById('searchInput').value;
-    const url = new URL(`${API_URL}/clients`);
+    // Fix: Use window.location.origin as base for relative URLs
+    const url = new URL(`${API_URL}/clients`, window.location.origin);
+    
     if (currentStatusFilter !== 'Todos') {
         url.searchParams.append('status', currentStatusFilter);
     }
