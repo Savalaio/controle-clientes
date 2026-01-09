@@ -340,13 +340,20 @@ function getInvoiceHtml(clientName, value, dueDate, product, pixKey, instruction
 
 // Admin: List Users
 app.get('/api/admin/users', (req, res) => {
+    // Debug log
+    console.log('Fetching users list for admin...');
+    
     db.all(`
         SELECT u.id, u.name, u.email, u.plan, u.status, u.role, u.whatsapp, u.cpf, u.payment_status, u.created_at, u.due_date, COUNT(c.id) as client_count 
         FROM users u 
         LEFT JOIN clients c ON u.id = c.user_id 
         GROUP BY u.id
     `, (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error('Error fetching users:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        console.log(`Found ${rows ? rows.length : 0} users`);
         res.json(rows);
     });
 });

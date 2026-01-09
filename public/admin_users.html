@@ -228,13 +228,21 @@
 
             try {
                 const response = await fetch(`${API_URL}/admin/users`);
-                if (!response.ok) throw new Error('Falha ao buscar usuários');
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('Server error response:', text);
+                    throw new Error('Falha ao buscar usuários: ' + response.status);
+                }
                 
                 allUsers = await response.json();
+                console.log('Users loaded:', allUsers); // Debug
                 renderTable(allUsers);
             } catch (error) {
-                console.error('Error loading users:', error);
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-red-400"><i class="fas fa-exclamation-circle text-2xl"></i><br>Erro ao carregar dados. Verifique o servidor.</td></tr>';
+                console.error('Error loading users (FULL):', error);
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center p-8 text-red-400">
+                    <i class="fas fa-exclamation-circle text-2xl"></i><br>
+                    Erro ao carregar dados: ${error.message}
+                </td></tr>`;
             }
         }
 
