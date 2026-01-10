@@ -18,11 +18,17 @@
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
             outline: none;
         }
+        @media (max-width: 640px) {
+            .login-container {
+                width: 90%;
+                padding: 1.5rem;
+            }
+        }
     </style>
 </head>
-<body class="h-screen flex items-center justify-center font-sans">
+<body class="h-screen flex items-center justify-center font-sans p-4">
 
-    <div class="w-full max-w-sm p-8 bg-gray-900/50 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-sm">
+    <div class="w-full max-w-sm p-8 bg-gray-900/50 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-sm login-container">
         <div class="flex items-center justify-center gap-2 mb-8">
             <i class="fas fa-file-signature text-orange-400 text-2xl"></i>
             <h1 class="text-2xl font-bold">Criar conta</h1>
@@ -31,38 +37,38 @@
         <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4">
             <div class="relative">
                 <input type="text" id="name" placeholder="Nome" required 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
             </div>
 
             <div class="relative">
                 <input type="email" id="email" placeholder="E-mail" required 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
             </div>
 
             <div class="relative">
                 <input type="password" id="password" placeholder="Senha" required 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
             </div>
 
             <div class="relative">
                 <input type="text" id="whatsapp" placeholder="WhatsApp" 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
             </div>
 
             <div class="relative">
                 <input type="text" id="cpf" placeholder="CPF" 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600">
+                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
             </div>
 
             <button type="submit" 
-                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg shadow-blue-500/20 mt-4">
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg shadow-blue-500/20 mt-4 active:scale-95">
                 Criar conta
             </button>
         </form>
 
         <div class="mt-6 text-sm text-center">
             <div class="text-gray-400">
-                Já tenho conta <span class="text-gray-600">→</span> <a href="login.html" class="text-blue-400 hover:text-blue-300 font-semibold">Entrar</a>
+                Já tenho conta <span class="text-gray-600">→</span> <a href="login.html" class="text-blue-400 hover:text-blue-300 font-semibold transition">Entrar</a>
             </div>
         </div>
     </div>

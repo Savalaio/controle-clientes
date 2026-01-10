@@ -31,43 +31,43 @@
 </head>
 <body class="font-sans">
 
-    <div class="flex h-screen overflow-hidden">
+    <div class="flex h-screen overflow-hidden flex-col md:flex-row">
         
         <!-- Sidebar -->
-        <div class="w-64 flex-shrink-0 border-r border-gray-800 p-6 flex flex-col gap-6">
+        <div class="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-800 p-4 md:p-6 flex flex-row md:flex-col gap-4 md:gap-6 justify-between items-center md:items-stretch bg-[#020617] z-10">
             <div class="text-xl font-bold text-green-500 flex items-center gap-2">
-                <i class="fas fa-robot"></i> Controle
+                <i class="fas fa-robot"></i> <span class="md:inline hidden">Controle</span>
             </div>
             
-            <nav class="flex-1 space-y-2">
-                <a href="index.html" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
-                    <i class="fas fa-home w-6"></i> Início
+            <nav class="flex md:flex-col gap-2 md:space-y-2 overflow-x-auto md:overflow-visible w-full md:w-auto">
+                <a href="index.html" class="block text-gray-400 hover:text-white px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-home w-5 md:w-6"></i> <span class="md:inline hidden">Início</span>
                 </a>
-                <a href="support.html" class="block text-white bg-gray-800 rounded px-4 py-2 flex items-center gap-2">
-                    <i class="fas fa-headset w-6"></i> Suporte
+                <a href="support.html" class="block text-white bg-gray-800 rounded px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-headset w-5 md:w-6"></i> <span class="md:inline hidden">Suporte</span>
                 </a>
                 <div id="adminBtn" class="hidden">
-                    <a href="admin.html" class="block text-blue-400 hover:text-blue-300 px-4 py-2 flex items-center gap-2">
-                        <i class="fas fa-tools w-6"></i> Área do Admin
+                    <a href="admin.html" class="block text-blue-400 hover:text-blue-300 px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap">
+                        <i class="fas fa-tools w-5 md:w-6"></i> <span class="md:inline hidden">Área do Admin</span>
                     </a>
                 </div>
-                <a href="#" onclick="logout()" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
-                    <i class="fas fa-sign-out-alt w-6"></i> Sair
+                <a href="#" onclick="logout()" class="block text-gray-400 hover:text-white px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap md:mt-auto">
+                    <i class="fas fa-sign-out-alt w-5 md:w-6"></i> <span class="md:inline hidden">Sair</span>
                 </a>
             </nav>
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 overflow-y-auto p-8 flex flex-col items-center">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center w-full">
             
-            <div class="w-full max-w-4xl">
-                <h1 class="text-3xl font-bold mb-8 flex items-center gap-3">
+            <div class="w-full max-w-4xl mt-4 md:mt-0">
+                <h1 class="text-2xl md:text-3xl font-bold mb-6 md:mb-8 flex items-center gap-3 justify-center md:justify-start">
                     <i class="fas fa-headset text-green-500"></i> Suporte
                 </h1>
 
                 <!-- New Ticket Form -->
                 <div class="card-gradient-dark p-6 rounded-xl mb-8">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-200">Novo Chamado</h2>
+                    <h2 class="text-lg md:text-xl font-semibold mb-4 text-gray-200">Novo Chamado</h2>
                     <form id="newTicketForm" class="space-y-4">
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">Assunto</label>
@@ -97,19 +97,19 @@
     </div>
 
     <!-- Ticket Detail Modal -->
-    <div id="ticketModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
-        <div class="card-gradient-dark p-8 rounded-xl w-full max-w-2xl relative shadow-2xl border border-gray-700">
+    <div id="ticketModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm p-4">
+        <div class="card-gradient-dark p-6 md:p-8 rounded-xl w-full max-w-2xl relative shadow-2xl border border-gray-700 max-h-[90vh] flex flex-col">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
                 <i class="fas fa-times text-xl"></i>
             </button>
             
-            <h2 id="modalSubject" class="text-2xl font-bold mb-2 text-white"></h2>
-            <div class="flex items-center gap-4 mb-6 text-sm text-gray-400">
+            <h2 id="modalSubject" class="text-xl md:text-2xl font-bold mb-2 text-white pr-8"></h2>
+            <div class="flex items-center gap-4 mb-4 md:mb-6 text-xs md:text-sm text-gray-400">
                 <span id="modalDate"></span>
                 <span id="modalStatus" class="px-2 py-0.5 rounded text-xs font-bold bg-gray-700 text-gray-300"></span>
             </div>
 
-            <div id="modalMessages" class="space-y-4 mb-6 max-h-[400px] overflow-y-auto p-4 bg-gray-900/50 rounded-lg">
+            <div id="modalMessages" class="space-y-4 mb-4 md:mb-6 overflow-y-auto p-4 bg-gray-900/50 rounded-lg flex-1">
                 <!-- Messages -->
             </div>
 

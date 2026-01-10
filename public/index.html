@@ -30,24 +30,63 @@
     <style>
         body { background-color: #0f172a; color: #fff; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); }
+        
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            h1 { font-size: 1.5rem; }
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .md\:col-span-2 { grid-column: span 1; }
+            .flex-wrap { flex-wrap: wrap; }
+            
+            /* Responsive Table Card View */
+            .responsive-table thead { display: none; }
+            .responsive-table tbody tr {
+                display: block;
+                background: #1e293b;
+                margin-bottom: 1rem;
+                border-radius: 0.75rem;
+                border: 1px solid #334155;
+                padding: 1rem;
+            }
+            .responsive-table tbody td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.5rem 0;
+                border: none;
+            }
+            .responsive-table tbody td::before {
+                content: attr(data-label);
+                font-weight: bold;
+                color: #94a3b8;
+                margin-right: 1rem;
+            }
+            .responsive-table tbody td:last-child {
+                margin-top: 1rem;
+                padding-top: 1rem;
+                border-top: 1px solid #334155;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
-<body class="p-8 font-sans">
+<body class="p-4 md:p-8 font-sans">
     <div class="max-w-7xl mx-auto">
         <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold flex items-center gap-2">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <h1 class="text-2xl md:text-3xl font-bold flex items-center gap-2">
                 <i class="fas fa-clipboard-list text-orange-400"></i> Meus Clientes
             </h1>
-            <div class="flex gap-4">
-                <a href="support.html" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-full font-semibold transition flex items-center gap-2">
-                    <i class="fas fa-headset"></i> Suporte
+            <div class="flex flex-wrap justify-center gap-2 md:gap-4 w-full md:w-auto">
+                <a href="support.html" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-full font-semibold transition flex items-center gap-2 text-sm">
+                    <i class="fas fa-headset"></i> <span class="hidden md:inline">Suporte</span>
                 </a>
-                <button id="adminBtn" onclick="window.location.href='admin.html'" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-full font-semibold transition flex items-center gap-2">
-                    <i class="fas fa-tools"></i> Admin
+                <button id="adminBtn" onclick="window.location.href='admin.html'" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-full font-semibold transition flex items-center gap-2 text-sm">
+                    <i class="fas fa-tools"></i> <span class="hidden md:inline">Admin</span>
                 </button>
-                <button onclick="openModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold transition">
-                    Novo Cliente
+                <button onclick="openModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full font-semibold transition text-sm flex-1 md:flex-none">
+                    <i class="fas fa-plus md:hidden mr-1"></i> Novo Cliente
                 </button>
                 <button onclick="logout()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-full font-semibold transition" title="Sair">
                     <i class="fas fa-sign-out-alt"></i>
@@ -56,9 +95,9 @@
         </div>
 
         <!-- Charts & Actions Row -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <!-- Chart Container -->
-            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 md:col-span-2">
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 lg:col-span-2">
                 <h3 class="text-lg font-bold mb-4">Fluxo Financeiro</h3>
                 <div class="h-64">
                     <canvas id="financeChart"></canvas>
@@ -246,7 +285,7 @@
                 <button onclick="closeBatchModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times fa-lg"></i></button>
             </div>
             <div class="flex-1 overflow-y-auto pr-2">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse responsive-table">
                     <thead class="bg-gray-900 text-gray-400 sticky top-0">
                         <tr>
                             <th class="p-3">Cliente</th>
@@ -266,6 +305,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
 </body>
 </html>

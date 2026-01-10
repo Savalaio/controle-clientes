@@ -324,21 +324,21 @@ function renderTable(clients) {
             const safeId = client.id;
 
             tr.innerHTML = `
-                <td class="p-4 font-semibold text-white">${safeName}</td>
-                <td class="p-4 text-sm">
+                <td class="p-4 font-semibold text-white" data-label="Nome">${safeName}</td>
+                <td class="p-4 text-sm" data-label="Email/Tel">
                     <div class="text-white">${safeEmail}</div>
                     <div class="text-gray-500 text-xs">${safePhone}</div>
                 </td>
-                <td class="p-4 text-gray-300">${safeProduct}</td>
-                <td class="p-4 text-gray-300">${formatDate(safeDueDate)}</td>
-                <td class="p-4 font-mono text-white">${formatCurrency(safeValue)}</td>
-                <td class="p-4">
+                <td class="p-4 text-gray-300" data-label="Produto">${safeProduct}</td>
+                <td class="p-4 text-gray-300" data-label="Vencimento">${formatDate(safeDueDate)}</td>
+                <td class="p-4 font-mono text-white" data-label="Valor">${formatCurrency(safeValue)}</td>
+                <td class="p-4" data-label="Status">
                     <span class="px-2 py-1 rounded text-xs font-bold ${displayStatusClass} inline-block">
                         ${displayStatus}
                     </span>
                 </td>
-                <td class="p-4 text-sm text-gray-400">${client.paid_at ? formatDate(client.paid_at) : '-'}</td>
-                <td class="p-4 text-center">
+                <td class="p-4 text-sm text-gray-400" data-label="Pago Em">${client.paid_at ? formatDate(client.paid_at) : '-'}</td>
+                <td class="p-4 text-center" data-label="Ações">
                     <div class="flex items-center justify-center gap-2">
                         <button onclick="sendWhatsapp('${safePhone}', '${safeName}', '${safeProduct}', ${safeValue}, '${safeDueDate}')" 
                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Cobrar no WhatsApp">

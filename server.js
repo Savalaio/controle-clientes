@@ -585,20 +585,35 @@ app.post('/api/login', (req, res) => {
             return;
         }
         if (row) {
-                    if (row.status === 'blocked') {
-                        return res.status(403).json({ error: "Conta bloqueada. Contate o administrador." });
-                    }
-                    res.json({ 
-                        message: "success", 
-                        user: { 
-                            id: row.id, 
-                            email: row.email, 
-                            name: row.name,
-                            plan: row.plan,
-                            role: row.role || 'user'
-                        } 
-                    });
-                } else {
+            // Check Blocked Status
+            if (row.status === 'blocked') {
+                return res.status(403).json({ error: "Conta bloqueada. Contate o administrador." });
+            }
+
+            // Check Payment Status (Auto-Block Logic)
+            if (row.plan !== 'free' && row.role !== 'admin') {
+                const today = new Date().toISOString().split('T')[0];
+                if (row.due_date && row.due_date < today && row.payment_status !== 'paid') {
+                     // Opcional: Atualizar status para 'blocked' no banco para persistir
+                     // Mas por enquanto vamos apenas impedir o login
+                     return res.status(402).json({ 
+                        error: "Plano vencido. Realize o pagamento para continuar.",
+                        is_overdue: true
+                     });
+                }
+            }
+
+            res.json({ 
+                message: "success", 
+                user: { 
+                    id: row.id, 
+                    email: row.email, 
+                    name: row.name,
+                    plan: row.plan,
+                    role: row.role || 'user'
+                } 
+            });
+        } else {
             res.status(401).json({ error: "Credenciais inválidas" });
         }
     });

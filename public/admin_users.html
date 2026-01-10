@@ -27,62 +27,98 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(71, 85, 105, 1);
         }
+        /* Responsive Table */
+        @media (max-width: 768px) {
+            .responsive-table thead { display: none; }
+            .responsive-table tbody tr {
+                display: block;
+                background: rgba(30, 41, 59, 0.5);
+                margin-bottom: 1rem;
+                border-radius: 0.75rem;
+                border: 1px solid #334155;
+                padding: 1rem;
+            }
+            .responsive-table tbody td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.5rem 0;
+                border: none;
+                font-size: 0.875rem;
+            }
+            .responsive-table tbody td::before {
+                content: attr(data-label);
+                font-weight: bold;
+                color: #94a3b8;
+                margin-right: 1rem;
+            }
+            .mobile-hidden {
+                display: none !important;
+            }
+            .mobile-flex-col {
+                flex-direction: column !important;
+            }
+            .mobile-full-width {
+                width: 100% !important;
+                max-width: none !important;
+            }
+        }
     </style>
 </head>
 <body class="font-sans">
 
-    <div class="flex h-screen overflow-hidden">
+    <div class="flex h-screen overflow-hidden flex-col md:flex-row">
         
         <!-- Sidebar -->
-        <div class="w-64 flex-shrink-0 border-r border-gray-800 p-6 flex flex-col gap-6">
+        <div class="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-800 p-4 md:p-6 flex flex-row md:flex-col gap-4 md:gap-6 justify-between items-center md:items-stretch bg-[#020617] z-10">
             <div class="text-xl font-bold text-blue-500 flex items-center gap-2">
-                <i class="fas fa-tools"></i> Admin
+                <i class="fas fa-tools"></i> <span class="md:inline hidden">Admin</span>
             </div>
             
-            <nav class="flex-1 space-y-2">
-                <a href="admin_users.html" class="block text-white bg-gray-800 rounded px-4 py-2 flex items-center gap-2">
-                    <i class="fas fa-users-cog w-6"></i> Gerenciar usuários
+            <nav class="flex md:flex-col gap-2 md:space-y-2 overflow-x-auto md:overflow-visible w-full md:w-auto">
+                <a href="admin_users.html" class="block text-white bg-gray-800 rounded px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-users-cog w-5 md:w-6"></i> <span class="md:inline hidden">Usuários</span>
                 </a>
-                <a href="admin_support.html" id="nav-support" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
-                    <i class="fas fa-headset w-6"></i> Suporte <span id="support-badge" class="hidden bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-auto"></span>
+                <a href="admin_support.html" id="nav-support" class="block text-gray-400 hover:text-white px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-headset w-5 md:w-6"></i> <span class="md:inline hidden">Suporte</span> <span id="support-badge" class="hidden bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-auto"></span>
                 </a>
-                <a href="admin.html" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
-                    <i class="fas fa-chart-line w-6"></i> Dashboard
+                <a href="admin.html" class="block text-gray-400 hover:text-white px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-chart-line w-5 md:w-6"></i> <span class="md:inline hidden">Dashboard</span>
                 </a>
-                <a href="index.html" class="block text-purple-400 hover:text-purple-300 px-4 py-2 flex items-center gap-2">
-                    <i class="fas fa-user w-6"></i> Área do Usuário
+                <a href="index.html" class="block text-purple-400 hover:text-purple-300 px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-user w-5 md:w-6"></i> <span class="md:inline hidden">Área Usuário</span>
                 </a>
-                <a href="#" onclick="logout()" class="block text-gray-400 hover:text-white px-4 py-2 flex items-center gap-2">
-                    <i class="fas fa-sign-out-alt w-6"></i> Sair
+                <a href="#" onclick="logout()" class="block text-gray-400 hover:text-white px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap md:mt-auto">
+                    <i class="fas fa-sign-out-alt w-5 md:w-6"></i> <span class="md:inline hidden">Sair</span>
                 </a>
             </nav>
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 overflow-y-auto p-8 flex flex-col items-center">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center w-full">
             
             <!-- Title -->
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold flex justify-center items-center gap-3">
+            <div class="text-center mb-6 md:mb-8 mt-4 md:mt-0">
+                <h1 class="text-2xl md:text-3xl font-bold flex justify-center items-center gap-3">
                     <i class="fas fa-user text-purple-500"></i> Gerenciar Usuários
                 </h1>
             </div>
 
             <!-- Search Bar -->
-            <div class="w-full max-w-6xl mb-6 flex justify-between items-center">
-                <div class="relative w-full max-w-md">
+            <div class="w-full max-w-6xl mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="relative w-full md:max-w-md">
                     <input type="text" id="searchInput" onkeyup="filterUsers()" placeholder="Buscar por nome, email ou CPF..." 
                         class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-3 pl-10 rounded-lg focus:outline-none focus:border-blue-500 transition">
                     <i class="fas fa-search absolute left-3 top-3.5 text-gray-500"></i>
                 </div>
-                <div class="text-sm text-gray-400">
+                <div class="text-sm text-gray-400 w-full md:w-auto text-center md:text-right">
                     Total: <span id="totalCount" class="font-bold text-white">0</span>
                 </div>
             </div>
 
             <!-- Table Container -->
-            <div class="w-full max-w-6xl card-gradient-dark rounded-xl overflow-x-auto shadow-2xl">
-                <table class="w-full text-left border-collapse min-w-[1000px]">
+            <div class="w-full max-w-6xl card-gradient-dark rounded-xl overflow-hidden shadow-2xl">
+                <table class="w-full text-left border-collapse responsive-table">
                     <thead>
                         <tr class="bg-gray-900/50 text-gray-400 text-sm uppercase border-b border-gray-800">
                             <th class="p-4">Nome</th>
@@ -115,7 +151,7 @@
     </div>
 
     <!-- Modal for Plan Change -->
-    <div id="planModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50">
+    <div id="planModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-gray-800 rounded-xl p-6 max-w-sm w-full border border-gray-700">
             <h2 class="text-xl font-bold mb-4">Alterar Plano</h2>
             <input type="hidden" id="modalUserId">
@@ -138,7 +174,7 @@
     </div>
 
     <!-- Modal for Payment Status -->
-    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50">
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-gray-800 rounded-xl p-6 max-w-sm w-full border border-gray-700">
             <h2 class="text-xl font-bold mb-4">Status de Pagamento</h2>
             <input type="hidden" id="modalPaymentUserId">
@@ -168,6 +204,9 @@
     </div>
 
     <script>
+        // ... (existing script content)
+        // Need to update renderUsers table generation to add data-labels for mobile view
+
         // Ticket Badge Logic
         async function updateTicketBadge() {
             try {
@@ -341,27 +380,27 @@
                 }
 
                 tr.innerHTML = `
-                    <td class="p-4 font-semibold text-white">
+                    <td class="p-4 font-semibold text-white" data-label="Nome">
                         ${user.name || 'Sem nome'}
                     </td>
-                    <td class="p-4 text-gray-400">${user.email}</td>
-                    <td class="p-4 text-gray-400">${user.whatsapp || '-'}</td>
-                    <td class="p-4 text-gray-400">${user.cpf || '-'}</td>
-                    <td class="p-4 text-gray-400">${createdAt}</td>
-                    <td class="p-4 text-gray-400 ${payText === 'VENCIDO' ? 'text-red-400 font-bold' : ''}">${dueDateDisplay}</td>
-                    <td class="p-4 font-bold uppercase ${planColor}">${user.plan}</td>
-                    <td class="p-4">
+                    <td class="p-4 text-gray-400" data-label="Email">${user.email}</td>
+                    <td class="p-4 text-gray-400" data-label="WhatsApp">${user.whatsapp || '-'}</td>
+                    <td class="p-4 text-gray-400" data-label="CPF">${user.cpf || '-'}</td>
+                    <td class="p-4 text-gray-400" data-label="Registro">${createdAt}</td>
+                    <td class="p-4 text-gray-400 ${payText === 'VENCIDO' ? 'text-red-400 font-bold' : ''}" data-label="Vencimento">${dueDateDisplay}</td>
+                    <td class="p-4 font-bold uppercase ${planColor}" data-label="Plano">${user.plan}</td>
+                    <td class="p-4" data-label="Role">
                         <button onclick="toggleRole(${user.id}, '${user.role}')" 
                             class="px-2 py-1 rounded text-xs font-semibold transition ${user.role === 'admin' ? 'bg-purple-900 text-purple-300 hover:bg-purple-800' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">
                             ${(user.role || 'user').toUpperCase()}
                         </button>
                     </td>
-                    <td class="p-4">
+                    <td class="p-4" data-label="Pagamento">
                         <span class="px-2 py-1 rounded text-xs font-bold ${payBadgeClass} flex items-center justify-center w-fit">${payIcon}${payText}</span>
                     </td>
-                    <td class="p-4">${user.client_count}</td>
-                    <td class="p-4 font-bold ${statusColor}">${statusText}</td>
-                    <td class="p-4 flex items-center gap-2">
+                    <td class="p-4" data-label="Clientes">${user.client_count}</td>
+                    <td class="p-4 font-bold ${statusColor}" data-label="Status">${statusText}</td>
+                    <td class="p-4 flex items-center gap-2" data-label="Ações">
                         <button onclick="sendCharge(${user.id})" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs flex items-center gap-1 border border-green-800 transition shadow-lg shadow-green-900/50" title="Cobrar no WhatsApp">
                             <i class="fab fa-whatsapp text-sm"></i>
                         </button>
