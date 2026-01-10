@@ -173,6 +173,44 @@
         </div>
     </div>
 
+    <!-- Modal for Role Change -->
+    <div id="roleModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-sm w-full border border-gray-700">
+            <h2 class="text-xl font-bold mb-4">Alterar Permissão</h2>
+            <input type="hidden" id="modalRoleUserId">
+            <p class="text-gray-400 text-sm mb-6">Ao promover para Admin, este usuário terá acesso total ao painel administrativo.</p>
+            
+            <div class="space-y-3 mb-6">
+                <button onclick="saveRole('user')" class="w-full p-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-left flex justify-between items-center group transition border border-transparent hover:border-blue-500/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-gray-300">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <span class="block font-bold text-white">Usuário</span>
+                            <span class="text-xs text-gray-400">Acesso padrão ao sistema</span>
+                        </div>
+                    </div>
+                    <i class="fas fa-check text-blue-500 hidden" id="check-role-user"></i>
+                </button>
+
+                <button onclick="saveRole('admin')" class="w-full p-4 bg-blue-900/20 hover:bg-blue-900/40 rounded-lg text-left flex justify-between items-center group transition border border-blue-900/50 hover:border-blue-500">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div>
+                            <span class="block font-bold text-white">Administrador</span>
+                            <span class="text-xs text-gray-400">Acesso total ao painel Admin</span>
+                        </div>
+                    </div>
+                    <i class="fas fa-check text-blue-500 hidden" id="check-role-admin"></i>
+                </button>
+            </div>
+            <button onclick="closeRoleModal()" class="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 rounded transition">Cancelar</button>
+        </div>
+    </div>
+
     <!-- Modal for Payment Status -->
     <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-gray-800 rounded-xl p-6 max-w-sm w-full border border-gray-700">
@@ -416,10 +454,73 @@
                         <button onclick="resetPassword(${user.id})" class="bg-yellow-900/50 hover:bg-yellow-800 text-yellow-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-yellow-800 transition" title="Redefinir Senha">
                             <i class="fas fa-key"></i>
                         </button>
+                        <button onclick="openRoleModal(${user.id}, '${user.role || 'user'}')" class="bg-purple-900/50 hover:bg-purple-800 text-purple-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-purple-800 transition" title="Alterar Permissão">
+                            <i class="fas fa-user-shield"></i>
+                        </button>
+                        <button onclick="deleteUser(${user.id})" class="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-red-800 transition" title="Excluir Usuário">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        // --- Role Modal Logic ---
+        function openRoleModal(userId, currentRole) {
+            document.getElementById('modalRoleUserId').value = userId;
+            
+            // Reset icons
+            document.getElementById('check-role-user').classList.add('hidden');
+            document.getElementById('check-role-admin').classList.add('hidden');
+            
+            // Highlight current
+            if (currentRole === 'admin') {
+                document.getElementById('check-role-admin').classList.remove('hidden');
+            } else {
+                document.getElementById('check-role-user').classList.remove('hidden');
+            }
+            
+            document.getElementById('roleModal').classList.remove('hidden');
+        }
+
+        function closeRoleModal() {
+            document.getElementById('roleModal').classList.add('hidden');
+        }
+
+        async function saveRole(role) {
+            const userId = document.getElementById('modalRoleUserId').value;
+            
+            try {
+                const res = await fetch(`${API_URL}/admin/users/${userId}/role`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role })
+                });
+
+                if (res.ok) {
+                    closeRoleModal();
+                    loadUsers(); // Refresh table
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Erro ao alterar permissão');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Erro de conexão');
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+            try {
+                await fetch(`${API_URL}/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                loadUsers();
+            } catch (error) {
+                console.error('Error deleting user:', error);
+            }
         }
 
         function openCreateUserModal() {

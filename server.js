@@ -870,6 +870,21 @@ app.post('/api/clients', (req, res) => {
     }
 });
 
+// Update User Role (Promote/Demote)
+app.put('/api/admin/users/:id/role', (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!['user', 'admin'].includes(role)) {
+        return res.status(400).json({ error: "Invalid role. Use 'user' or 'admin'." });
+    }
+
+    db.run("UPDATE users SET role = ? WHERE id = ?", [role, id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "success", changes: this.changes });
+    });
+});
+
 // Update client details
 app.put('/api/clients/:id', (req, res) => {
     const userId = req.headers['x-user-id'];
