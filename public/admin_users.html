@@ -614,18 +614,24 @@
                     body: JSON.stringify({ name, email, password, whatsapp, cpf })
                 });
 
-                const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    data = null;
+                }
 
                 if (response.ok) {
                     alert('Usuário criado com sucesso!');
                     closeCreateUserModal();
                     loadUsers();
                 } else {
-                    alert('Erro ao criar usuário: ' + (data.error || 'Erro desconhecido'));
+                    const errorMsg = data && data.error ? data.error : 'Erro desconhecido (Status: ' + response.status + ')';
+                    alert('Erro ao criar usuário: ' + errorMsg);
                 }
             } catch (error) {
                 console.error('Error creating user:', error);
-                alert('Erro de conexão.');
+                alert('Erro de conexão ou falha no servidor. Verifique o console.');
             }
         }
 

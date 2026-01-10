@@ -1,5 +1,5 @@
 const express = require('express');
-console.log("--- INICIANDO VERSAO CORRIGIDA V3 (Database Check) ---");
+console.log("--- INICIANDO VERSAO CORRIGIDA V4 (Bcrypt Fix) ---");
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -7,6 +7,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = 3000; // Force port 3000 as requested for Easypanel
@@ -416,22 +417,25 @@ app.post('/api/admin/users', (req, res) => {
     const { name, email, password, whatsapp, cpf } = req.body;
     
     // Hash password
-    const bcrypt = require('bcryptjs');
-    const hashedPassword = bcrypt.hashSync(password, 8);
-    
-    // Use adminId as owner_id
-    db.run(`INSERT INTO users (name, email, password, whatsapp, cpf, owner_id) VALUES (?, ?, ?, ?, ?, ?)`, 
-        [name, email, hashedPassword, whatsapp, cpf, adminId], 
-        function(err) {
-            if (err) {
-                if (err.message.includes("UNIQUE constraint failed")) {
-                    return res.status(400).json({ error: "Email já cadastrado." });
+    try {
+        const hashedPassword = bcrypt.hashSync(password, 8);
+        
+        // Use adminId as owner_id
+        db.run(`INSERT INTO users (name, email, password, whatsapp, cpf, owner_id) VALUES (?, ?, ?, ?, ?, ?)`, 
+            [name, email, hashedPassword, whatsapp, cpf, adminId], 
+            function(err) {
+                if (err) {
+                    if (err.message.includes("UNIQUE constraint failed")) {
+                        return res.status(400).json({ error: "Email já cadastrado." });
+                    }
+                    return res.status(500).json({ error: err.message });
                 }
-                return res.status(500).json({ error: err.message });
+                res.json({ id: this.lastID, message: "User created" });
             }
-            res.json({ id: this.lastID, message: "User created" });
-        }
-    );
+        );
+    } catch (e) {
+        return res.status(500).json({ error: "Erro ao criptografar senha: " + e.message });
+    }
 });
 
 // Admin: Get ticket stats (count of open tickets)
