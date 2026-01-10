@@ -321,8 +321,15 @@
 
         async function initDashboard() {
             try {
+                const userToken = localStorage.getItem('user_token');
+                const currentUser = userToken ? JSON.parse(userToken) : null;
+                const headers = { 
+                    'Content-Type': 'application/json',
+                    'x-user-id': currentUser ? currentUser.id : '' 
+                };
+
                 // 1. Fetch Stats for Cards (includes prices)
-                const statsRes = await fetch(`${API_URL}/admin/stats`);
+                const statsRes = await fetch(`${API_URL}/admin/stats`, { headers });
                 const stats = await statsRes.json();
                 
                 // Update PRICING from DB
@@ -351,7 +358,7 @@
                 document.getElementById('estimated-revenue').innerText = revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
                 // 2. Fetch All Users for Table & Charts
-                const usersRes = await fetch(`${API_URL}/admin/users`);
+                const usersRes = await fetch(`${API_URL}/admin/users`, { headers });
                 const users = await usersRes.json();
 
                 // Populate Recent Users Table (Last 5)
@@ -385,10 +392,17 @@
             const premium = document.getElementById('price-premium').value;
             const pix_key = document.getElementById('pix-key').value;
 
+            const userToken = localStorage.getItem('user_token');
+            const currentUser = userToken ? JSON.parse(userToken) : null;
+            const headers = { 
+                'Content-Type': 'application/json',
+                'x-user-id': currentUser ? currentUser.id : '' 
+            };
+
             try {
                 const response = await fetch(`${API_URL}/admin/settings`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify({
                         prices: { free, pro, premium },
                         pix_key: pix_key
