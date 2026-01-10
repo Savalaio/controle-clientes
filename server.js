@@ -667,12 +667,31 @@ app.put('/api/admin/settings', (req, res) => {
 // Login
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
-    db.get("SELECT * FROM users WHERE email = ? AND password = ?", [email, password], (err, row) => {
+    
+    // First, find user by email
+    db.get("SELECT * FROM users WHERE email = ?", [email], (err, row) => {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
         }
+        
         if (row) {
+            // Verify Password
+            let passwordIsValid = false;
+            
+            // Check if password is hashed (bcrypt hashes start with $2)
+            if (row.password && row.password.startsWith('$2')) {
+                const bcrypt = require('bcryptjs');
+                passwordIsValid = bcrypt.compareSync(password, row.password);
+            } else {
+                // Legacy plain text check
+                passwordIsValid = (row.password === password);
+            }
+
+            if (!passwordIsValid) {
+                return res.status(401).json({ error: "Credenciais inválidas" });
+            }
+
             // Check Blocked Status
             if (row.status === 'blocked') {
                 return res.status(403).json({ error: "Conta bloqueada. Contate o administrador." });
@@ -717,10 +736,14 @@ app.post('/api/register', (req, res) => {
 
     const created_at = new Date().toISOString().split('T')[0];
 
+    // Hash password
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = bcrypt.hashSync(password, 8);
+
     const sql = `INSERT INTO users (name, email, password, whatsapp, cpf, plan, status, created_at) 
                  VALUES (?, ?, ?, ?, ?, 'free', 'active', ?)`;
     
-    db.run(sql, [name, email, password, whatsapp, cpf, created_at], function(err) {
+    db.run(sql, [name, email, hashedPassword, whatsapp, cpf, created_at], function(err) {
         if (err) {
             if (err.message.includes('UNIQUE constraint failed')) {
                 return res.status(400).json({ error: "Email já cadastrado" });
@@ -747,20 +770,29 @@ app.post('/api/forgot-password', (req, res) => {
             return res.status(500).json({ error: "Servidor de e-mail não configurado." });
         }
 
-        const mailOptions = {
-            from: `"Meus Clientes" <${process.env.SMTP_USER}>`,
-            to: email,
-            subject: 'Recuperação de Senha - Meus Clientes',
-            text: `Olá ${user.name},\n\nRecebemos uma solicitação de recuperação de senha.\n\nSua senha é: ${user.password}\n\nAcesse: ${req.protocol}://${req.get('host')}/login.html\n\nSe você não solicitou isso, ignore este e-mail.`
-        };
+        // Generate new random password
+        const newPassword = Math.random().toString(36).slice(-8);
+        const bcrypt = require('bcryptjs');
+        const hashedPassword = bcrypt.hashSync(newPassword, 8);
 
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.error("Erro ao enviar email:", error);
-                return res.status(500).json({ error: "Erro ao enviar e-mail. Verifique os logs." });
-            }
-            console.log('Email enviado: ' + info.response);
-            res.json({ message: "success" });
+        // Update user password
+        db.run("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, user.id], (err) => {
+            if (err) return res.status(500).json({ error: "Erro ao redefinir senha." });
+
+            const mailOptions = {
+                from: `"Meus Clientes" <${process.env.SMTP_USER}>`,
+                to: email,
+                subject: 'Recuperação de Senha - Meus Clientes',
+                text: `Olá ${user.name},\n\nRecebemos uma solicitação de recuperação de senha.\n\nSua NOVA senha é: ${newPassword}\n\nAcesse: ${req.protocol}://${req.get('host')}/login.html\n\nRecomendamos que você altere esta senha após o login.\n\nSe você não solicitou isso, entre em contato conosco imediatamente.`
+            };
+
+            transporter.sendMail(mailOptions, (error, info) => {
+                if (error) {
+                    console.error("Erro ao enviar email:", error);
+                    return res.status(500).json({ error: "Erro ao enviar e-mail." });
+                }
+                res.json({ message: "E-mail de recuperação enviado." });
+            });
         });
     });
 });
