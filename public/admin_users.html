@@ -550,7 +550,8 @@
             }
 
             try {
-                const response = await fetch(`${API_URL}/register`, {
+                // Use the Admin-specific endpoint which handles owner_id
+                const response = await fetch(`${API_URL}/admin/users`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name, email, password, whatsapp, cpf })

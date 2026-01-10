@@ -100,9 +100,27 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 cpf TEXT,
                 plan TEXT DEFAULT 'free',
                 status TEXT DEFAULT 'active',
-                role TEXT DEFAULT 'user'
+                due_date TEXT,
+                role TEXT DEFAULT 'user',
+                payment_status TEXT DEFAULT 'pending',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                owner_id INTEGER DEFAULT 1
             )`, (err) => {
-                if (err) console.error(err);
+                if (err) console.error("Error creating users table:", err);
+                else {
+                    // Migration: Check if owner_id exists
+                    db.all("PRAGMA table_info(users)", (err, columns) => {
+                        if (err) return;
+                        const hasOwnerId = columns.some(col => col.name === 'owner_id');
+                        if (!hasOwnerId) {
+                            console.log("Migrating users table: Adding owner_id column...");
+                            db.run("ALTER TABLE users ADD COLUMN owner_id INTEGER DEFAULT 1", (err) => {
+                                if (err) console.error("Error adding owner_id:", err);
+                                else console.log("Added owner_id column to users table.");
+                            });
+                        }
+                    });
+                }
             });
             
             // Migration: Add columns if they don't exist
@@ -348,22 +366,35 @@ function getInvoiceHtml(clientName, value, dueDate, product, pixKey, instruction
 
 // Routes
 
-// Admin: List Users
+// Admin: Get all users (Scoped by Owner)
 app.get('/api/admin/users', (req, res) => {
-    // Debug log
-    console.log('Fetching users list for admin...');
+    // 1. Get the admin's ID from the header (passed by frontend)
+    // NOTE: In a real app, this should be extracted from the JWT token for security.
+    // Assuming the frontend sends 'x-user-id' header or we use the 'authenticateToken' middleware properly.
+    // For now, let's look for x-user-id header which we use in other routes.
+    const adminId = parseInt(req.headers['x-user-id']);
+
+    if (!adminId) {
+        return res.status(401).json({ error: "Unauthorized: Missing Admin ID" });
+    }
+
+    // 2. Check if this Admin is the "Master" (ID=1) or a Sub-Admin
+    // If ID=1, show ALL users.
+    // If ID!=1, show only users where owner_id = adminId
     
-    db.all(`
-        SELECT u.id, u.name, u.email, u.plan, u.status, u.role, u.whatsapp, u.cpf, u.payment_status, u.created_at, u.due_date, COUNT(c.id) as client_count 
-        FROM users u 
-        LEFT JOIN clients c ON u.id = c.user_id 
-        GROUP BY u.id
-    `, (err, rows) => {
-        if (err) {
-            console.error('Error fetching users:', err);
-            return res.status(500).json({ error: err.message });
-        }
-        console.log(`Found ${rows ? rows.length : 0} users`);
+    let query = "SELECT id, name, email, whatsapp, plan, status, due_date, payment_status, role, created_at, owner_id FROM users";
+    let params = [];
+
+    if (adminId !== 1) {
+        query += " WHERE owner_id = ?";
+        params.push(adminId);
+    } else {
+        // Master Admin sees everyone, maybe order by owner_id to group them?
+        query += " ORDER BY owner_id ASC, id DESC";
+    }
+
+    db.all(query, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
 });
@@ -375,6 +406,32 @@ app.put('/api/admin/users/:id/role', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: "Role atualizado" });
     });
+});
+
+// Admin Create User (Scoped)
+app.post('/api/admin/users', (req, res) => {
+    const adminId = parseInt(req.headers['x-user-id']);
+    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { name, email, password, whatsapp, cpf } = req.body;
+    
+    // Hash password
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = bcrypt.hashSync(password, 8);
+    
+    // Use adminId as owner_id
+    db.run(`INSERT INTO users (name, email, password, whatsapp, cpf, owner_id) VALUES (?, ?, ?, ?, ?, ?)`, 
+        [name, email, hashedPassword, whatsapp, cpf, adminId], 
+        function(err) {
+            if (err) {
+                if (err.message.includes("UNIQUE constraint failed")) {
+                    return res.status(400).json({ error: "Email já cadastrado." });
+                }
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ id: this.lastID, message: "User created" });
+        }
+    );
 });
 
 // Admin: Get ticket stats (count of open tickets)
@@ -516,6 +573,9 @@ app.put('/api/admin/users/:id/status', (req, res) => {
 
 // Admin Stats
 app.get('/api/admin/stats', (req, res) => {
+    const adminId = parseInt(req.headers['x-user-id']);
+    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+
     const stats = {
         users_free: 0,
         users_pro: 0,
@@ -537,8 +597,18 @@ app.get('/api/admin/stats', (req, res) => {
             });
         }
 
-        db.all("SELECT plan, status FROM users", (err, rows) => {
+        let userQuery = "SELECT id, plan, status FROM users";
+        let userParams = [];
+
+        if (adminId !== 1) {
+            userQuery += " WHERE owner_id = ?";
+            userParams.push(adminId);
+        }
+
+        db.all(userQuery, userParams, (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
+
+            const userIds = rows.map(r => r.id);
 
             rows.forEach(row => {
                 stats.total_users++;
@@ -554,11 +624,17 @@ app.get('/api/admin/stats', (req, res) => {
                 }
             });
 
-            db.get("SELECT count(*) as count FROM clients", (err, row) => {
-                if (err) return res.status(500).json({ error: err.message });
-                stats.total_clients = row.count;
+            // Calculate total clients for these users
+            if (userIds.length > 0) {
+                const placeholders = userIds.map(() => '?').join(',');
+                db.get(`SELECT count(*) as count FROM clients WHERE user_id IN (${placeholders})`, userIds, (err, row) => {
+                    if (err) return res.status(500).json({ error: err.message });
+                    stats.total_clients = row.count;
+                    res.json(stats);
+                });
+            } else {
                 res.json(stats);
-            });
+            }
         });
     });
 });
