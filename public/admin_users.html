@@ -302,19 +302,23 @@
 
         const API_URL = '/api';
 
+        // Helper to get headers with Auth
+        function getAuthHeaders() {
+            const userToken = localStorage.getItem('user_token');
+            const currentUser = userToken ? JSON.parse(userToken) : null;
+            return {
+                'Content-Type': 'application/json',
+                'x-user-id': currentUser ? currentUser.id : ''
+            };
+        }
+
         // Global variables for billing
         let pricing = {};
         let adminPixKey = '';
 
         async function loadSettings() {
             try {
-                const userToken = localStorage.getItem('user_token');
-                const currentUser = userToken ? JSON.parse(userToken) : null;
-                const headers = { 
-                    'Content-Type': 'application/json',
-                    'x-user-id': currentUser ? currentUser.id : '' 
-                };
-
+                const headers = getAuthHeaders();
                 const response = await fetch(`${API_URL}/admin/stats`, { headers });
                 const stats = await response.json();
                 
@@ -544,7 +548,7 @@
             try {
                 const res = await fetch(`${API_URL}/admin/users/${userId}/role`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ role })
                 });
 
@@ -565,7 +569,8 @@
             if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
             try {
                 await fetch(`${API_URL}/admin/users/${userId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
                 });
                 loadUsers();
             } catch (error) {
@@ -684,7 +689,7 @@
             try {
                 const response = await fetch(`${API_URL}/admin/users/${userId}/role`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ role: newRole })
                 });
 
@@ -692,10 +697,12 @@
                     alert(`Usuário alterado para ${newRole.toUpperCase()} com sucesso!`);
                     loadUsers();
                 } else {
-                    alert('Erro ao alterar permissão.');
+                    const data = await response.json();
+                    alert('Erro ao alterar permissão: ' + (data.error || 'Erro desconhecido'));
                 }
             } catch (error) {
                 console.error('Error toggling role:', error);
+                alert('Erro de conexão.');
             }
         }
 
@@ -725,7 +732,7 @@
             try {
                 await fetch(`${API_URL}/admin/users/${userId}/payment_status`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ 
                         payment_status: status,
                         due_date: dueDate
@@ -743,7 +750,7 @@
             try {
                 await fetch(`${API_URL}/admin/users/${userId}/plan`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ plan })
                 });
                 closePlanModal();
@@ -761,7 +768,7 @@
             try {
                 await fetch(`${API_URL}/admin/users/${userId}/status`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ status: newStatus })
                 });
                 loadUsers();
@@ -778,7 +785,7 @@
             try {
                 const response = await fetch(`${API_URL}/admin/users/${userId}/password`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ password: newPassword })
                 });
                 

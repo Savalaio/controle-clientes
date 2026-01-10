@@ -400,12 +400,33 @@ app.get('/api/admin/users', (req, res) => {
     });
 });
 
-// Admin: Update User Role
+// Admin: Update User Role (Promote/Demote)
 app.put('/api/admin/users/:id/role', (req, res) => {
+    const adminId = parseInt(req.headers['x-user-id']);
+    const targetUserId = req.params.id;
     const { role } = req.body;
-    db.run("UPDATE users SET role = ? WHERE id = ?", [role, req.params.id], function(err) {
+
+    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+
+    if (!['user', 'admin'].includes(role)) {
+        return res.status(400).json({ error: "Invalid role. Use 'user' or 'admin'." });
+    }
+
+    // Check permissions
+    db.get("SELECT owner_id FROM users WHERE id = ?", [targetUserId], (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Role atualizado" });
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        // Master Admin (ID 1) can do anything
+        // Sub-Admin can only edit their own users
+        if (adminId !== 1 && user.owner_id !== adminId) {
+            return res.status(403).json({ error: "Você não tem permissão para alterar este usuário." });
+        }
+
+        db.run("UPDATE users SET role = ? WHERE id = ?", [role, targetUserId], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "success", changes: this.changes });
+        });
     });
 });
 
@@ -980,21 +1001,6 @@ app.post('/api/clients', (req, res) => {
             });
         });
     }
-});
-
-// Update User Role (Promote/Demote)
-app.put('/api/admin/users/:id/role', (req, res) => {
-    const { id } = req.params;
-    const { role } = req.body;
-
-    if (!['user', 'admin'].includes(role)) {
-        return res.status(400).json({ error: "Invalid role. Use 'user' or 'admin'." });
-    }
-
-    db.run("UPDATE users SET role = ? WHERE id = ?", [role, id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "success", changes: this.changes });
-    });
 });
 
 // Update client details
