@@ -111,8 +111,11 @@
                         class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-3 pl-10 rounded-lg focus:outline-none focus:border-blue-500 transition">
                     <i class="fas fa-search absolute left-3 top-3.5 text-gray-500"></i>
                 </div>
-                <div class="text-sm text-gray-400 w-full md:w-auto text-center md:text-right">
-                    Total: <span id="totalCount" class="font-bold text-white">0</span>
+                <div class="text-sm text-gray-400 w-full md:w-auto text-center md:text-right flex items-center gap-4">
+                    <button onclick="openCreateUserModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Novo Usuário
+                    </button>
+                    <div>Total: <span id="totalCount" class="font-bold text-white">0</span></div>
                 </div>
             </div>
 
@@ -147,6 +150,39 @@
                 </a>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Modal for Creating User -->
+    <div id="createUserModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700">
+            <h2 class="text-xl font-bold mb-4">Novo Usuário</h2>
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Nome</label>
+                    <input type="text" id="newUserName" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Email</label>
+                    <input type="email" id="newUserEmail" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Senha</label>
+                    <input type="password" id="newUserPassword" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">WhatsApp</label>
+                    <input type="text" id="newUserWhatsapp" placeholder="Ex: 5511999999999" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">CPF</label>
+                    <input type="text" id="newUserCpf" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="createUser()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded transition">Criar</button>
+                <button onclick="closeCreateUserModal()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded transition">Cancelar</button>
+            </div>
         </div>
     </div>
 
