@@ -248,43 +248,36 @@ function exportCSV() {
 // Fetch Clients
 async function loadClients() {
     const search = document.getElementById('searchInput').value;
-    // Fix: Use window.location.origin as base for relative URLs
-    const url = new URL(`${API_URL}/clients`, window.location.origin);
-    
-    if (currentStatusFilter !== 'Todos') {
-        url.searchParams.append('status', currentStatusFilter);
-    }
-    if (search) {
-        url.searchParams.append('search', search);
-    }
-
     try {
-        const response = await fetch(url, {
-            headers: { 'x-user-id': currentUserId }
-        });
-        const result = await response.json();
-        
-        if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-                // Token invalido ou usuario deletado
-                console.warn("Sessao invalida detectada em loadClients");
-                localStorage.removeItem('user_token');
-                window.location.href = 'login.html';
-                return;
-            }
-            console.error('Server error:', result.error);
-            document.getElementById('clientsTableBody').innerHTML = 
-                `<tr><td colspan="8" class="p-4 text-center text-red-500">Erro ao carregar: ${result.error || 'Erro desconhecido'}</td></tr>`;
-            return;
+        // Use simpler URL construction to avoid issues
+        let urlStr = `${API_URL}/clients?`;
+        if (currentStatusFilter !== 'Todos') {
+            urlStr += `status=${encodeURIComponent(currentStatusFilter)}&`;
+        }
+        if (search) {
+            urlStr += `search=${encodeURIComponent(search)}`;
         }
 
+        const response = await fetch(urlStr, {
+            headers: { 'x-user-id': currentUserId }
+        });
+        
+        if (!response.ok) {
+             const text = await response.text();
+             throw new Error(`Server Error: ${response.status} - ${text}`);
+        }
+
+        const result = await response.json();
         const data = result.data || [];
         
         renderTable(data);
     } catch (error) {
         console.error('Error loading clients:', error);
         document.getElementById('clientsTableBody').innerHTML = 
-            `<tr><td colspan="8" class="p-4 text-center text-red-500">Erro de conexão. Verifique o console.</td></tr>`;
+            `<tr><td colspan="8" class="p-4 text-center text-red-500">
+                <i class="fas fa-exclamation-triangle"></i> Erro: ${error.message}<br>
+                <small class="text-gray-500">Tente recarregar a página</small>
+            </td></tr>`;
     }
 }
 
