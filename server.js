@@ -129,6 +129,14 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     // Ignore error if column already exists
                 });
             });
+            
+            // Create Settings Table
+            db.run(`CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )`, (err) => {
+                if (err) console.error("Error creating settings table:", err);
+            });
 
             seedUsers();
             
