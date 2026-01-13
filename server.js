@@ -72,6 +72,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
             name TEXT NOT NULL,
             email TEXT,
             phone TEXT,
+            cpf TEXT,
             product TEXT,
             due_date TEXT NOT NULL,
             value REAL NOT NULL,
@@ -85,6 +86,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
                      if (!err) {
                          // Assign existing clients to admin (id 1) for migration
                          db.run("UPDATE clients SET user_id = 1 WHERE user_id IS NULL");
+                     }
+                 });
+                 
+                 // Migration: Add cpf if not exists
+                 db.all("PRAGMA table_info(clients)", (err2, columns) => {
+                     if (err2 || !columns) return;
+                     const hasCpf = columns.some(col => col.name === 'cpf');
+                     if (!hasCpf) {
+                         db.run("ALTER TABLE clients ADD COLUMN cpf TEXT");
                      }
                  });
             }
@@ -1001,8 +1011,8 @@ app.get('/api/clients', (req, res) => {
     }
 
     if (search) {
-        query += " AND (name LIKE ? OR email LIKE ?)";
-        params.push(`%${search}%`, `%${search}%`);
+        query += " AND (name LIKE ? OR email LIKE ? OR cpf LIKE ?)";
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     query += " ORDER BY due_date ASC";
@@ -1049,10 +1059,10 @@ app.post('/api/clients', (req, res) => {
     });
 
     function insertClient() {
-        const { name, email, phone, product, due_date, value } = req.body;
-        const sql = `INSERT INTO clients (user_id, name, email, phone, product, due_date, value, status) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?, 'Pendente')`;
-        const params = [userId, name, email, phone, product, due_date, value];
+        const { name, email, phone, cpf, product, due_date, value } = req.body;
+        const sql = `INSERT INTO clients (user_id, name, email, phone, cpf, product, due_date, value, status) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pendente')`;
+        const params = [userId, name, email, phone, cpf, product, due_date, value];
         
         db.run(sql, params, function (err) {
             if (err) {
@@ -1084,9 +1094,9 @@ app.put('/api/clients/:id', (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { id } = req.params;
-    const { name, email, phone, product, due_date, value } = req.body;
-    const sql = `UPDATE clients SET name = ?, email = ?, phone = ?, product = ?, due_date = ?, value = ? WHERE id = ? AND user_id = ?`;
-    const params = [name, email, phone, product, due_date, value, id, userId];
+    const { name, email, phone, cpf, product, due_date, value } = req.body;
+    const sql = `UPDATE clients SET name = ?, email = ?, phone = ?, cpf = ?, product = ?, due_date = ?, value = ? WHERE id = ? AND user_id = ?`;
+    const params = [name, email, phone, cpf, product, due_date, value, id, userId];
 
     db.run(sql, params, function (err) {
         if (err) {

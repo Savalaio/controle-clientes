@@ -54,6 +54,9 @@ function openEditModal(clientId) {
     form.product.value = client.product;
     form.due_date.value = client.due_date;
     form.value.value = client.value;
+    if (form.cpf) {
+        form.cpf.value = client.cpf || '';
+    }
 
     document.getElementById('modal').classList.remove('hidden');
 }
@@ -218,7 +221,7 @@ function exportCSV() {
         return;
     }
 
-    const headers = ['Nome', 'Email', 'Telefone', 'Produto', 'Vencimento', 'Valor', 'Status', 'Pago em'];
+    const headers = ['Nome', 'Email', 'Telefone', 'CPF', 'Produto', 'Vencimento', 'Valor', 'Status', 'Pago em'];
     const csvRows = [headers.join(',')];
 
     allClients.forEach(client => {
@@ -226,6 +229,7 @@ function exportCSV() {
             `"${client.name}"`,
             `"${client.email || ''}"`,
             `"${client.phone || ''}"`,
+            `"${client.cpf || ''}"`,
             `"${client.product}"`,
             client.due_date,
             client.value,
@@ -329,6 +333,7 @@ function renderTable(clients) {
                     <div class="text-white">${safeEmail}</div>
                     <div class="text-gray-500 text-xs">${safePhone}</div>
                 </td>
+                <td class="p-4 text-gray-300" data-label="CPF">${client.cpf || '-'}</td>
                 <td class="p-4 text-gray-300" data-label="Produto">${safeProduct}</td>
                 <td class="p-4 text-gray-300" data-label="Vencimento">${formatDate(safeDueDate)}</td>
                 <td class="p-4 font-mono text-white" data-label="Valor">${formatCurrency(safeValue)}</td>
