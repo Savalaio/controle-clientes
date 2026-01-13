@@ -697,18 +697,36 @@ async function sendEmail(clientId) {
             method: 'POST',
             headers: { 'x-user-id': currentUserId }
         });
-        const data = await response.json();
         
         if (response.ok) {
             alert('E-mail enviado com sucesso!');
         } else {
-            alert(data.error || 'Erro ao enviar e-mail.');
+            const data = await response.json();
+            alert(data.error || 'Erro ao enviar e-mail');
         }
     } catch (error) {
-        console.error('Erro:', error);
-        alert('Erro de conexão ao enviar e-mail.');
+        console.error('Error sending email:', error);
+        alert('Erro ao enviar e-mail. Verifique as configurações de SMTP.');
     }
 }
+
+// Expose functions globally
+window.logout = logout;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.openEditModal = openEditModal;
+window.openBatchModal = openBatchModal;
+window.closeBatchModal = closeBatchModal;
+window.handleFormSubmit = handleFormSubmit;
+window.sendWhatsapp = sendWhatsapp;
+window.sendEmail = sendEmail;
+window.markAsPaid = markAsPaid;
+window.deleteClient = deleteClient;
+window.uploadLogo = uploadLogo;
+window.savePaymentPrefs = savePaymentPrefs;
+window.searchClients = searchClients;
+window.filterStatus = filterStatus;
+window.exportCSV = exportCSV;
 
 // Debounce search
 let searchTimeout;

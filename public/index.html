@@ -5,23 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meus Clientes</title>
     <script>
-        // Global Error Handler
-        window.onerror = function(message, source, lineno, colno, error) {
-            const errorDiv = document.createElement('div');
-            errorDiv.style.position = 'fixed';
-            errorDiv.style.top = '0';
-            errorDiv.style.left = '0';
-            errorDiv.style.width = '100%';
-            errorDiv.style.backgroundColor = 'red';
-            errorDiv.style.color = 'white';
-            errorDiv.style.padding = '10px';
-            errorDiv.style.zIndex = '9999';
-            errorDiv.style.textAlign = 'center';
-            errorDiv.innerHTML = `<strong>Erro no Sistema:</strong> ${message} <br><small>${source}:${lineno}</small>`;
-            document.body.prepend(errorDiv);
-            return false;
-        };
-
         // Auth Guard (Executa antes de renderizar qualquer coisa)
         (function() {
             try {
@@ -328,5 +311,6 @@
         </div>
     </div>
 
+    <script src="app.js?v=10"></script>
 </body>
 </html>
