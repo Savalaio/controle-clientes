@@ -27,10 +27,18 @@ let currentStatusFilter = 'Todos';
 // Load initial data
 document.addEventListener('DOMContentLoaded', () => {
     // Set User Name in Header
-    if (currentUser && currentUser.name) {
+    if (currentUser) {
         const headerUserName = document.getElementById('headerUserName');
         if (headerUserName) {
-            headerUserName.textContent = `| ${currentUser.name}`;
+            // Tenta pegar o primeiro nome, ou email, ou fallback
+            const firstName = currentUser.name ? currentUser.name.split(' ')[0] : null;
+            const displayName = firstName || currentUser.email || 'Usuário';
+            
+            headerUserName.textContent = `| Olá, ${displayName}`;
+            headerUserName.classList.remove('hidden'); // Garante que está visível
+            console.log('User name updated to:', displayName);
+        } else {
+            console.error('headerUserName element not found in DOM');
         }
     }
 
