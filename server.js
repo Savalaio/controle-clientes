@@ -1010,34 +1010,54 @@ app.post('/api/ai/generate-message', async (req, res) => {
         });
     }
 
-    try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        // Using gemini-1.5-flash as gemini-pro (1.0) is becoming deprecated/unavailable
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // List of models to try in order of preference
+    const modelsToTry = [
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-001",
+        "gemini-1.5-pro",
+        "gemini-pro",
+        "gemini-1.0-pro"
+    ];
 
-        const prompt = `Escreva uma mensagem curta de cobrança para WhatsApp (apenas o texto da mensagem).
-        Cliente: ${clientName}
-        Valor: R$ ${value}
-        Vencimento: ${dueDate}
-        Produto: ${product}
-        Tom: ${tone || 'educado'}
-        
-        Instruções:
-        - Seja ${tone || 'educado'}.
-        - Inclua os dados da dívida.
-        - Não coloque "Assunto:".
-        - Use emojis se o tom permitir.
-        - Mantenha curto e direto para leitura no celular.`;
+    let lastError = null;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-        
-        res.json({ message: text });
-    } catch (error) {
-        console.error("Erro na IA:", error);
-        res.status(500).json({ error: "Falha ao gerar mensagem com IA: " + error.message });
+    for (const modelName of modelsToTry) {
+        try {
+            console.log(`Tentando gerar mensagem com modelo: ${modelName}`);
+            const model = genAI.getGenerativeModel({ model: modelName });
+
+            const prompt = `Escreva uma mensagem curta de cobrança para WhatsApp (apenas o texto da mensagem).
+            Cliente: ${clientName}
+            Valor: R$ ${value}
+            Vencimento: ${dueDate}
+            Produto: ${product}
+            Tom: ${tone || 'educado'}
+            
+            Instruções:
+            - Seja ${tone || 'educado'}.
+            - Inclua os dados da dívida.
+            - Não coloque "Assunto:".
+            - Use emojis se o tom permitir.
+            - Mantenha curto e direto para leitura no celular.`;
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const text = response.text();
+            
+            // If successful, return immediately
+            return res.json({ message: text, model_used: modelName });
+        } catch (error) {
+            console.warn(`Falha com modelo ${modelName}:`, error.message);
+            lastError = error;
+            // Continue to next model
+        }
     }
+
+    // If all models fail
+    console.error("Todos os modelos falharam. Último erro:", lastError);
+    res.status(500).json({ error: "Falha ao gerar mensagem com IA (todos os modelos falharam): " + (lastError ? lastError.message : "Erro desconhecido") });
 });
 
 // Upload Logo Route
