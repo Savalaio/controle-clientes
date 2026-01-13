@@ -26,25 +26,36 @@ let currentStatusFilter = 'Todos';
 
 // Load initial data
 document.addEventListener('DOMContentLoaded', () => {
-    // Set User Name in Header
-    if (currentUser) {
-        const headerUserName = document.getElementById('headerUserName');
-        if (headerUserName) {
-            // Tenta pegar o primeiro nome, ou email, ou fallback
-            const firstName = currentUser.name ? currentUser.name.split(' ')[0] : null;
-            const displayName = firstName || currentUser.email || 'Usuário';
-            
-            headerUserName.textContent = `| Olá, ${displayName}`;
-            headerUserName.classList.remove('hidden'); // Garante que está visível
-            console.log('User name updated to:', displayName);
-        } else {
-            console.error('headerUserName element not found in DOM');
+    try {
+        // Set User Name in Header
+        if (currentUser) {
+            const headerUserName = document.getElementById('headerUserName');
+            if (headerUserName) {
+                try {
+                    let displayName = 'Usuário';
+                    if (currentUser.name && typeof currentUser.name === 'string') {
+                        displayName = currentUser.name.split(' ')[0];
+                    } else if (currentUser.email) {
+                        displayName = currentUser.email.split('@')[0];
+                    }
+                    
+                    headerUserName.textContent = `| Olá, ${displayName}`;
+                    headerUserName.classList.remove('hidden');
+                } catch (errName) {
+                    console.error('Error setting user name:', errName);
+                    headerUserName.textContent = '| Olá';
+                }
+            }
         }
-    }
 
-    loadClients();
-    loadStats();
-    loadPaymentPrefs();
+        // Carrega dados de forma independente para que um erro não bloqueie o outro
+        loadClients().catch(e => console.error("Error in loadClients:", e));
+        loadStats().catch(e => console.error("Error in loadStats:", e));
+        loadPaymentPrefs().catch(e => console.error("Error in loadPaymentPrefs:", e));
+
+    } catch (mainError) {
+        console.error("CRITICAL ERROR in DOMContentLoaded:", mainError);
+    }
 });
 
 // Modal functions
