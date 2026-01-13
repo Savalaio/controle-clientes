@@ -8,6 +8,7 @@ const multer = require('multer');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 const PORT = 3000; // Force port 3000 as requested for Easypanel
@@ -995,6 +996,50 @@ app.post('/api/subscriptions/run', (req, res) => {
     runSubscriptionsGeneration();
     res.json({ message: 'executed' });
 });
+
+// AI Message Generation Route
+app.post('/api/ai/generate-message', async (req, res) => {
+    const { clientName, value, dueDate, product, tone } = req.body;
+    
+    // Get API Key from environment variable
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+        return res.status(500).json({ 
+            error: "Chave de API do Google Gemini não configurada. Configure a variável de ambiente GEMINI_API_KEY." 
+        });
+    }
+
+    try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+        const prompt = `Escreva uma mensagem curta de cobrança para WhatsApp (apenas o texto da mensagem).
+        Cliente: ${clientName}
+        Valor: R$ ${value}
+        Vencimento: ${dueDate}
+        Produto: ${product}
+        Tom: ${tone || 'educado'}
+        
+        Instruções:
+        - Seja ${tone || 'educado'}.
+        - Inclua os dados da dívida.
+        - Não coloque "Assunto:".
+        - Use emojis se o tom permitir.
+        - Mantenha curto e direto para leitura no celular.`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        
+        res.json({ message: text });
+    } catch (error) {
+        console.error("Erro na IA:", error);
+        res.status(500).json({ error: "Falha ao gerar mensagem com IA: " + error.message });
+    }
+});
+
+// Upload Logo Route
 
 // Get all clients
 app.get('/api/clients', (req, res) => {

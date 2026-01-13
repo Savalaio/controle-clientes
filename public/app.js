@@ -376,6 +376,10 @@ function renderTable(clients) {
                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Cobrar no WhatsApp">
                             <i class="fas fa-comment"></i>
                         </button>
+                        <button onclick="openAiModal(${index})" 
+                                class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Gerar Mensagem IA">
+                            <i class="fas fa-magic"></i>
+                        </button>
                         <button onclick="sendEmail(${safeId})" 
                                 class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Reenviar E-mail">
                             <i class="fas fa-envelope"></i>
@@ -710,8 +714,95 @@ async function sendEmail(clientId) {
     }
 }
 
+// AI Message Functions
+let currentAiClient = null;
+
+function openAiModal(index) {
+    currentAiClient = allClients[index];
+    if (!currentAiClient) return;
+
+    document.getElementById('aiModal').classList.remove('hidden');
+    document.getElementById('aiResult').classList.add('hidden');
+    document.getElementById('aiSendBtn').classList.add('hidden');
+    document.getElementById('aiLoading').classList.add('hidden');
+    document.getElementById('aiMessageText').value = '';
+}
+
+function closeAiModal() {
+    document.getElementById('aiModal').classList.add('hidden');
+    currentAiClient = null;
+}
+
+async function generateAiMessage() {
+    if (!currentAiClient) return;
+    
+    const tone = document.getElementById('aiTone').value;
+    const loading = document.getElementById('aiLoading');
+    const resultDiv = document.getElementById('aiResult');
+    const textArea = document.getElementById('aiMessageText');
+    const sendBtn = document.getElementById('aiSendBtn');
+
+    loading.classList.remove('hidden');
+    resultDiv.classList.add('hidden');
+    sendBtn.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_URL}/ai/generate-message`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-user-id': currentUserId 
+            },
+            body: JSON.stringify({
+                clientName: currentAiClient.name,
+                value: formatCurrency(currentAiClient.value),
+                dueDate: formatDate(currentAiClient.due_date),
+                product: currentAiClient.product,
+                tone: tone
+            })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            textArea.value = data.message;
+            resultDiv.classList.remove('hidden');
+            sendBtn.classList.remove('hidden');
+            sendBtn.style.display = 'flex';
+        } else {
+            alert(data.error || 'Erro ao gerar mensagem.');
+        }
+    } catch (error) {
+        console.error('AI Error:', error);
+        alert('Erro ao conectar com a IA.');
+    } finally {
+        loading.classList.add('hidden');
+    }
+}
+
+function sendAiMessage() {
+    if (!currentAiClient) return;
+    const message = document.getElementById('aiMessageText').value;
+    const phone = currentAiClient.phone;
+
+    if (!phone) {
+        alert('Cliente sem telefone cadastrado!');
+        return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+    closeAiModal();
+}
+
 // Expose functions globally
 window.logout = logout;
+window.openAiModal = openAiModal;
+window.closeAiModal = closeAiModal;
+window.generateAiMessage = generateAiMessage;
+window.sendAiMessage = sendAiMessage;
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.openEditModal = openEditModal;
