@@ -403,7 +403,7 @@
             // Get Current User Info
             const userToken = localStorage.getItem('user_token');
             const currentUser = userToken ? JSON.parse(userToken) : null;
-            const isMaster = currentUser && (currentUser.id === 1 || currentUser.email === 'realizadorsonho@gmail.com');
+            const isMaster = currentUser && (currentUser.id == 1 || currentUser.email === 'realizadorsonho@gmail.com');
 
             users.forEach(user => {
                 const tr = document.createElement('tr');
