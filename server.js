@@ -1015,11 +1015,12 @@ app.post('/api/ai/generate-message', async (req, res) => {
     // List of models to try in order of preference
     // Structure: { model: string, config: RequestOptions }
     const modelsToTry = [
-        { model: "gemini-1.5-flash", config: {} }, // Default (v1beta)
-        { model: "gemini-1.5-flash", config: { apiVersion: "v1" } }, // Stable v1
-        { model: "gemini-1.5-pro", config: {} },
-        { model: "gemini-pro", config: { apiVersion: "v1" } }, // Legacy Stable
-        { model: "gemini-1.0-pro", config: { apiVersion: "v1" } }
+        { model: "gemini-2.0-flash", config: {} }, // New detected model
+        { model: "gemini-2.0-flash-lite", config: {} },
+        { model: "gemini-flash-latest", config: {} },
+        { model: "gemini-1.5-flash", config: {} }, 
+        { model: "gemini-1.5-flash", config: { apiVersion: "v1" } }, 
+        { model: "gemini-pro", config: { apiVersion: "v1" } }
     ];
 
     let lastError = null;
