@@ -413,19 +413,32 @@ app.put('/api/admin/users/:id/role', (req, res) => {
     }
 
     // Check permissions
-    db.get("SELECT owner_id FROM users WHERE id = ?", [targetUserId], (err, user) => {
+    // First, get the requester's details to verify if they are the Master
+    db.get("SELECT * FROM users WHERE id = ?", [adminId], (err, requester) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (!user) return res.status(404).json({ error: "User not found" });
+        if (!requester) return res.status(401).json({ error: "Requester not found" });
 
-        // Master Admin (ID 1) can do anything
-        // Sub-Admin can only edit their own users
-        if (adminId !== 1 && user.owner_id !== adminId) {
-            return res.status(403).json({ error: "Você não tem permissão para alterar este usuário." });
-        }
+        const isMaster = requester.id === 1 || requester.email === 'realizadorsonho@gmail.com';
 
-        db.run("UPDATE users SET role = ? WHERE id = ?", [role, targetUserId], function(err) {
+        db.get("SELECT owner_id FROM users WHERE id = ?", [targetUserId], (err, user) => {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "success", changes: this.changes });
+            if (!user) return res.status(404).json({ error: "User not found" });
+
+            // Master Admin can do anything
+            // Sub-Admin can only edit their own users
+            if (!isMaster && user.owner_id != adminId) {
+                return res.status(403).json({ error: "Você não tem permissão para alterar este usuário." });
+            }
+
+            // Restriction: Only Master Admin can promote/demote to ADMIN role
+            if (!isMaster && role === 'admin') {
+                return res.status(403).json({ error: "Apenas o Administrador Principal pode promover usuários a ADMIN." });
+            }
+
+            db.run("UPDATE users SET role = ? WHERE id = ?", [role, targetUserId], function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: "success", changes: this.changes });
+            });
         });
     });
 });
@@ -457,6 +470,30 @@ app.post('/api/admin/users', (req, res) => {
     } catch (e) {
         return res.status(500).json({ error: "Erro ao criptografar senha: " + e.message });
     }
+});
+
+// Admin: Delete User (Master Only)
+app.delete('/api/admin/users/:id', (req, res) => {
+    const adminId = parseInt(req.headers['x-user-id']);
+    const targetUserId = req.params.id;
+
+    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+
+    db.get("SELECT * FROM users WHERE id = ?", [adminId], (err, requester) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!requester) return res.status(401).json({ error: "Requester not found" });
+
+        const isMaster = requester.id === 1 || requester.email === 'realizadorsonho@gmail.com';
+
+        if (!isMaster) {
+            return res.status(403).json({ error: "Apenas o Administrador Principal pode excluir usuários." });
+        }
+
+        db.run("DELETE FROM users WHERE id = ?", [targetUserId], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "User deleted" });
+        });
+    });
 });
 
 // Admin: Get ticket stats (count of open tickets)
@@ -578,21 +615,59 @@ app.put('/api/admin/users/:id/password', (req, res) => {
 
 // Admin: Update user plan
 app.put('/api/admin/users/:id/plan', (req, res) => {
+    const adminId = parseInt(req.headers['x-user-id']);
     const { id } = req.params;
     const { plan } = req.body;
-    db.run("UPDATE users SET plan = ? WHERE id = ?", [plan, id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "success", changes: this.changes });
+
+    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+
+    db.get("SELECT * FROM users WHERE id = ?", [adminId], (err, requester) => {
+        if (err || !requester) return res.status(401).json({ error: "Unauthorized" });
+
+        const isMaster = requester.id === 1 || requester.email === 'realizadorsonho@gmail.com';
+
+        db.get("SELECT owner_id FROM users WHERE id = ?", [id], (err, targetUser) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!targetUser) return res.status(404).json({ error: "User not found" });
+
+            if (!isMaster && targetUser.owner_id != adminId) {
+                return res.status(403).json({ error: "Permission denied" });
+            }
+
+            db.run("UPDATE users SET plan = ? WHERE id = ?", [plan, id], function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: "success", changes: this.changes });
+            });
+        });
     });
 });
 
 // Admin: Update user status
 app.put('/api/admin/users/:id/status', (req, res) => {
+    const adminId = parseInt(req.headers['x-user-id']);
     const { id } = req.params;
     const { status } = req.body;
-    db.run("UPDATE users SET status = ? WHERE id = ?", [status, id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "success", changes: this.changes });
+
+    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+
+    db.get("SELECT * FROM users WHERE id = ?", [adminId], (err, requester) => {
+        if (err || !requester) return res.status(401).json({ error: "Unauthorized" });
+
+        const isMaster = requester.id === 1 || requester.email === 'realizadorsonho@gmail.com';
+
+        db.get("SELECT owner_id FROM users WHERE id = ?", [id], (err, targetUser) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!targetUser) return res.status(404).json({ error: "User not found" });
+
+            if (!isMaster && targetUser.owner_id != adminId) {
+                return res.status(403).json({ error: "Permission denied" });
+            }
+
+            db.run("UPDATE users SET status = ? WHERE id = ?", [status, id], function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: "success", changes: this.changes });
+            });
+        });
     });
 });
 

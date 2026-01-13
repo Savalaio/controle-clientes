@@ -230,7 +230,7 @@
                     <i class="fas fa-check text-blue-500 hidden" id="check-role-user"></i>
                 </button>
 
-                <button onclick="saveRole('admin')" class="w-full p-4 bg-blue-900/20 hover:bg-blue-900/40 rounded-lg text-left flex justify-between items-center group transition border border-blue-900/50 hover:border-blue-500">
+                <button id="btnRoleAdmin" onclick="saveRole('admin')" class="w-full p-4 bg-blue-900/20 hover:bg-blue-900/40 rounded-lg text-left flex justify-between items-center group transition border border-blue-900/50 hover:border-blue-500">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
                             <i class="fas fa-shield-alt"></i>
@@ -400,6 +400,11 @@
                 return;
             }
 
+            // Get Current User Info
+            const userToken = localStorage.getItem('user_token');
+            const currentUser = userToken ? JSON.parse(userToken) : null;
+            const isMaster = currentUser && (currentUser.id === 1 || currentUser.email === 'realizadorsonho@gmail.com');
+
             users.forEach(user => {
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-800 hover:bg-gray-800/30 transition';
@@ -436,16 +441,10 @@
                 const isPaid = user.payment_status === 'paid';
                 const isFree = user.plan === 'free';
                 
-                // Debug log para ajudar a identificar por que não aparece
-                if (user.payment_status === 'overdue' || (isLate && !isPaid)) {
-                    console.log(`Usuário Vencido Detectado: ${user.name} | Status: ${user.payment_status} | Data: ${user.due_date}`);
-                }
-
                 if (isFree) {
                     payBadgeClass = 'bg-green-500 text-white shadow-lg shadow-green-900/50';
                     payText = 'GRÁTIS';
                 } else if (user.payment_status === 'overdue' || (isLate && !isPaid)) {
-                    // Visual Reforçado para Vencidos
                     payBadgeClass = 'bg-red-600 text-white shadow-lg shadow-red-900/50 animate-pulse font-bold tracking-wider';
                     payText = 'VENCIDO';
                     payIcon = '<i class="fas fa-exclamation-triangle mr-1"></i>';
@@ -453,7 +452,6 @@
                     payBadgeClass = 'bg-green-600 text-white shadow-lg shadow-green-900/50';
                     payText = 'PAGO';
                 } else {
-                    // Pending cases
                     if (!user.due_date) {
                          payBadgeClass = 'bg-orange-600 text-white border border-orange-400 font-bold';
                          payText = 'PENDENTE';
@@ -464,12 +462,24 @@
                     }
                 }
 
-                // Aplica estilo na linha inteira se estiver vencido
                 if (payText === 'VENCIDO') {
-                    // Usando !important via style para garantir que nada sobrescreva
-                    tr.style.backgroundColor = 'rgba(127, 29, 29, 0.3)'; // red-900 com 0.3 opacidade
-                    tr.style.borderLeft = '4px solid #dc2626'; // red-600
+                    tr.style.backgroundColor = 'rgba(127, 29, 29, 0.3)';
+                    tr.style.borderLeft = '4px solid #dc2626';
                 }
+
+                // --- Restricted Buttons HTML ---
+                const roleButton = isMaster ? `
+                    <button onclick="openRoleModal(${user.id}, '${user.role || 'user'}')" class="bg-purple-900/50 hover:bg-purple-800 text-purple-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-purple-800 transition" title="Alterar Permissão">
+                        <i class="fas fa-user-shield"></i>
+                    </button>
+                ` : '';
+
+                const deleteButton = isMaster ? `
+                    <button onclick="deleteUser(${user.id})" class="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-red-800 transition" title="Excluir Usuário">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                ` : '';
+                // ------------------------------
 
                 tr.innerHTML = `
                     <td class="p-4 font-semibold text-white" data-label="Nome">
@@ -482,10 +492,9 @@
                     <td class="p-4 text-gray-400 ${payText === 'VENCIDO' ? 'text-red-400 font-bold' : ''}" data-label="Vencimento">${dueDateDisplay}</td>
                     <td class="p-4 font-bold uppercase ${planColor}" data-label="Plano">${user.plan}</td>
                     <td class="p-4" data-label="Role">
-                        <button onclick="toggleRole(${user.id}, '${user.role}')" 
-                            class="px-2 py-1 rounded text-xs font-semibold transition ${user.role === 'admin' ? 'bg-purple-900 text-purple-300 hover:bg-purple-800' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">
+                        <span class="px-2 py-1 rounded text-xs font-semibold transition ${user.role === 'admin' ? 'bg-purple-900 text-purple-300' : 'bg-gray-700 text-gray-300'}">
                             ${(user.role || 'user').toUpperCase()}
-                        </button>
+                        </span>
                     </td>
                     <td class="p-4" data-label="Pagamento">
                         <span class="px-2 py-1 rounded text-xs font-bold ${payBadgeClass} flex items-center justify-center w-fit">${payIcon}${payText}</span>
@@ -508,12 +517,8 @@
                         <button onclick="resetPassword(${user.id})" class="bg-yellow-900/50 hover:bg-yellow-800 text-yellow-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-yellow-800 transition" title="Redefinir Senha">
                             <i class="fas fa-key"></i>
                         </button>
-                        <button onclick="openRoleModal(${user.id}, '${user.role || 'user'}')" class="bg-purple-900/50 hover:bg-purple-800 text-purple-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-purple-800 transition" title="Alterar Permissão">
-                            <i class="fas fa-user-shield"></i>
-                        </button>
-                        <button onclick="deleteUser(${user.id})" class="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-red-800 transition" title="Excluir Usuário">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
+                        ${roleButton}
+                        ${deleteButton}
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -528,6 +533,18 @@
             document.getElementById('check-role-user').classList.add('hidden');
             document.getElementById('check-role-admin').classList.add('hidden');
             
+            // Hide Admin option if not Master Admin
+            const userToken = localStorage.getItem('user_token');
+            const currentUser = userToken ? JSON.parse(userToken) : null;
+            
+            const isMaster = currentUser && (currentUser.id == 1 || currentUser.email === 'realizadorsonho@gmail.com');
+            
+            if (!isMaster) {
+                document.getElementById('btnRoleAdmin').classList.add('hidden');
+            } else {
+                document.getElementById('btnRoleAdmin').classList.remove('hidden');
+            }
+
             // Highlight current
             if (currentRole === 'admin') {
                 document.getElementById('check-role-admin').classList.remove('hidden');
