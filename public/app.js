@@ -26,6 +26,14 @@ let currentStatusFilter = 'Todos';
 
 // Load initial data
 document.addEventListener('DOMContentLoaded', () => {
+    // Set User Name in Header
+    if (currentUser && currentUser.name) {
+        const headerUserName = document.getElementById('headerUserName');
+        if (headerUserName) {
+            headerUserName.textContent = `| ${currentUser.name}`;
+        }
+    }
+
     loadClients();
     loadStats();
     loadPaymentPrefs();
