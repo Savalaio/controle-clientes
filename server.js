@@ -1013,20 +1013,26 @@ app.post('/api/ai/generate-message', async (req, res) => {
     const genAI = new GoogleGenerativeAI(apiKey);
     
     // List of models to try in order of preference
+    // Structure: { model: string, config: RequestOptions }
     const modelsToTry = [
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-001",
-        "gemini-1.5-pro",
-        "gemini-pro",
-        "gemini-1.0-pro"
+        { model: "gemini-1.5-flash", config: {} }, // Default (v1beta)
+        { model: "gemini-1.5-flash", config: { apiVersion: "v1" } }, // Stable v1
+        { model: "gemini-1.5-pro", config: {} },
+        { model: "gemini-pro", config: { apiVersion: "v1" } }, // Legacy Stable
+        { model: "gemini-1.0-pro", config: { apiVersion: "v1" } }
     ];
 
     let lastError = null;
 
-    for (const modelName of modelsToTry) {
+    for (const option of modelsToTry) {
         try {
-            console.log(`Tentando gerar mensagem com modelo: ${modelName}`);
-            const model = genAI.getGenerativeModel({ model: modelName });
+            const modelName = option.model;
+            console.log(`Tentando gerar mensagem com modelo: ${modelName} (API: ${option.config.apiVersion || 'default'})`);
+            
+            const model = genAI.getGenerativeModel({ 
+                model: modelName,
+                ...option.config
+            });
 
             const prompt = `Escreva uma mensagem curta de cobrança para WhatsApp (apenas o texto da mensagem).
             Cliente: ${clientName}
@@ -1047,16 +1053,40 @@ app.post('/api/ai/generate-message', async (req, res) => {
             const text = response.text();
             
             // If successful, return immediately
-            return res.json({ message: text, model_used: modelName });
+            return res.json({ message: text, model_used: `${modelName} (${option.config.apiVersion || 'v1beta'})` });
         } catch (error) {
-            console.warn(`Falha com modelo ${modelName}:`, error.message);
+            console.warn(`Falha com modelo ${option.model}:`, error.message);
             lastError = error;
             // Continue to next model
         }
     }
 
-    // If all models fail
-    console.error("Todos os modelos falharam. Último erro:", lastError);
+    // If all models fail, try to list available models for debugging
+    try {
+        console.log("Tentando listar modelos disponíveis para diagnóstico...");
+        // Using direct fetch for diagnostics since SDK listModels might be complex to access here
+        const listResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        
+        if (listResponse.ok) {
+            const listData = await listResponse.json();
+            const availableModels = listData.models ? listData.models.map(m => m.name).join(', ') : 'Nenhum modelo retornado';
+            console.error("DIAGNÓSTICO - Modelos Disponíveis:", availableModels);
+            
+            return res.status(500).json({ 
+                error: `Falha em todos os modelos. Modelos disponíveis na sua conta: ${availableModels}. Erro original: ${lastError?.message}`
+            });
+        } else {
+            const errorText = await listResponse.text();
+            console.error("DIAGNÓSTICO - Falha ao listar modelos:", errorText);
+            return res.status(500).json({ 
+                error: `Falha total. Não foi possível nem listar os modelos. Verifique se a API 'Generative Language API' está habilitada no Google Cloud Console. Erro da API: ${errorText}`
+            });
+        }
+    } catch (diagError) {
+        console.error("Erro no diagnóstico:", diagError);
+    }
+
+    // Fallback error response
     res.status(500).json({ error: "Falha ao gerar mensagem com IA (todos os modelos falharam): " + (lastError ? lastError.message : "Erro desconhecido") });
 });
 
