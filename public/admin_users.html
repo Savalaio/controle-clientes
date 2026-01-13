@@ -499,11 +499,14 @@
                     <td class="p-4" data-label="Pagamento">
                         <span class="px-2 py-1 rounded text-xs font-bold ${payBadgeClass} flex items-center justify-center w-fit">${payIcon}${payText}</span>
                     </td>
-                    <td class="p-4" data-label="Clientes">${user.client_count}</td>
+                    <td class="p-4" data-label="Clientes">${user.client_count || 0}</td>
                     <td class="p-4 font-bold ${statusColor}" data-label="Status">${statusText}</td>
                     <td class="p-4 flex items-center gap-2" data-label="Ações">
                         <button onclick="sendCharge(${user.id})" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs flex items-center gap-1 border border-green-800 transition shadow-lg shadow-green-900/50" title="Cobrar no WhatsApp">
                             <i class="fab fa-whatsapp text-sm"></i>
+                        </button>
+                        <button onclick="openAdminAiModal(${user.id})" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1 border border-pink-800 transition shadow-lg shadow-pink-900/50" title="Gerar Mensagem IA">
+                            <i class="fas fa-magic"></i>
                         </button>
                         <button onclick="openPaymentModal(${user.id}, '${user.payment_status || 'pending'}', '${user.due_date || ''}')" class="bg-green-900/50 hover:bg-green-800 text-green-300 px-3 py-1 rounded text-xs flex items-center gap-1 border border-green-800 transition" title="Alterar Pagamento">
                             <i class="fas fa-dollar-sign"></i>
@@ -820,6 +823,93 @@
         // Initial load
         loadSettings();
         loadUsers();
+        // AI Message Logic for Admin
+        let currentAiUser = null;
+
+        function openAdminAiModal(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            if (!user) return;
+            currentAiUser = user;
+
+            document.getElementById('aiModal').classList.remove('hidden');
+            document.getElementById('aiResult').classList.add('hidden');
+            document.getElementById('aiSendBtn').classList.add('hidden');
+            document.getElementById('aiLoading').classList.add('hidden');
+            document.getElementById('aiMessageText').value = '';
+        }
+
+        function closeAdminAiModal() {
+            document.getElementById('aiModal').classList.add('hidden');
+            currentAiUser = null;
+        }
+
+        async function generateAdminAiMessage() {
+            if (!currentAiUser) return;
+            
+            const tone = document.getElementById('aiTone').value;
+            const loading = document.getElementById('aiLoading');
+            const resultDiv = document.getElementById('aiResult');
+            const textArea = document.getElementById('aiMessageText');
+            const sendBtn = document.getElementById('aiSendBtn');
+
+            loading.classList.remove('hidden');
+            resultDiv.classList.add('hidden');
+            sendBtn.classList.add('hidden');
+
+            const planPrice = pricing[currentAiUser.plan] || 0;
+            const formattedValue = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(planPrice);
+            const formattedDate = currentAiUser.due_date ? currentAiUser.due_date.split('-').reverse().join('/') : 'Data a definir';
+
+            try {
+                // Reuse the existing endpoint but map fields
+                const response = await fetch(`${API_URL}/ai/generate-message`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        clientName: currentAiUser.name,
+                        value: formattedValue,
+                        dueDate: formattedDate,
+                        product: `Plano ${currentAiUser.plan.toUpperCase()}`,
+                        tone: tone
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    textArea.value = data.message;
+                    resultDiv.classList.remove('hidden');
+                    sendBtn.classList.remove('hidden');
+                    sendBtn.style.display = 'flex';
+                } else {
+                    // Fallback if API fails
+                    textArea.value = `Erro: ${data.error || 'Falha na IA'}`;
+                    resultDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('AI Error:', error);
+                alert('Erro ao conectar com a IA.');
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function sendAdminAiMessage() {
+            if (!currentAiUser) return;
+            const message = document.getElementById('aiMessageText').value;
+            const phone = currentAiUser.whatsapp;
+
+            if (!phone) {
+                alert('Usuário sem WhatsApp cadastrado!');
+                return;
+            }
+
+            const cleanPhone = phone.replace(/\D/g, '');
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodedMessage}`;
+            window.open(whatsappUrl, '_blank');
+            closeAdminAiModal();
+        }
     </script>
 </body>
 </html>

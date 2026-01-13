@@ -394,7 +394,12 @@ app.get('/api/admin/users', (req, res) => {
     // If ID=1, show ALL users.
     // If ID!=1, show only users where owner_id = adminId
     
-    let query = "SELECT id, name, email, whatsapp, plan, status, due_date, payment_status, role, created_at, owner_id FROM users";
+    let query = `
+        SELECT users.id, users.name, users.email, users.whatsapp, users.plan, users.status, 
+               users.due_date, users.payment_status, users.role, users.created_at, users.owner_id,
+               (SELECT COUNT(*) FROM clients WHERE clients.user_id = users.id) as client_count
+        FROM users
+    `;
     let params = [];
 
     if (adminId !== 1) {
