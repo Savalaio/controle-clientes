@@ -1012,7 +1012,8 @@ app.post('/api/ai/generate-message', async (req, res) => {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // Updated model to gemini-1.5-flash as gemini-pro might be deprecated/unavailable in some contexts
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `Escreva uma mensagem curta de cobrança para WhatsApp (apenas o texto da mensagem).
         Cliente: ${clientName}
