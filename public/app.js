@@ -195,9 +195,11 @@ function renderChart(data) {
                     'rgba(234, 179, 8, 1)',
                     'rgba(239, 68, 68, 1)'
                 ],
-                borderWidth: 2,
+                borderWidth: 0,
                 borderRadius: 6,
-                barThickness: 60
+                barPercentage: 0.6,
+                categoryPercentage: 0.8,
+                maxBarThickness: 150
             }]
         },
         options: {
