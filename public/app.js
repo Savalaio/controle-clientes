@@ -196,9 +196,9 @@ function renderChart(data) {
                     'rgba(239, 68, 68, 1)'
                 ],
                 borderWidth: 0,
-                borderRadius: 4,
-                barPercentage: 1.0,
-                categoryPercentage: 1.0
+                borderRadius: 6,
+                barPercentage: 0.8,
+                categoryPercentage: 0.9
             }]
         },
         options: {
