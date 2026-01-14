@@ -196,10 +196,10 @@ function renderChart(data) {
                     'rgba(239, 68, 68, 1)'
                 ],
                 borderWidth: 0,
-                borderRadius: 6,
-                barPercentage: 0.6,
-                categoryPercentage: 0.8,
-                maxBarThickness: 150
+                borderRadius: 8,
+                barPercentage: 0.9,
+                categoryPercentage: 0.9,
+                maxBarThickness: 200
             }]
         },
         options: {

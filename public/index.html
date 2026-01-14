@@ -356,5 +356,50 @@
     </div>
 
     <script src="app.js?v=11"></script>
+    <!-- Modal Configurações -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full border border-gray-700 shadow-2xl relative">
+            <button onclick="closeSettingsModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fas fa-times fa-lg"></i></button>
+            <h2 class="text-2xl font-bold mb-6">Configurações de Cobrança</h2>
+            
+            <div class="space-y-4">
+                <!-- Logo Upload -->
+                <div class="mb-2">
+                    <label class="block text-xs text-gray-400 mb-1">Logomarca (opcional)</label>
+                    <div class="flex items-center gap-2">
+                        <img id="logoPreview" src="" class="w-10 h-10 rounded bg-white object-contain hidden border border-gray-600">
+                        <label class="cursor-pointer bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm flex-1 text-center hover:bg-gray-800 transition">
+                            <i class="fas fa-upload mr-1"></i> Escolher Arquivo
+                            <input type="file" id="logoInput" class="hidden" accept="image/*" onchange="uploadLogo()">
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Método de Pagamento</label>
+                    <select id="paymentMethod" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white">
+                        <option value="whatsapp">WhatsApp (manual)</option>
+                        <option value="pix">PIX</option>
+                        <option value="boleto">Boleto (manual)</option>
+                        <option value="link">Link de pagamento</option>
+                    </select>
+                </div>
+                
+                <input id="paymentPixKey" type="text" placeholder="Chave PIX (email/cpf/celular)" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm hidden text-white">
+                <textarea id="paymentInstructions" placeholder="Instruções/Link de pagamento" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm hidden text-white"></textarea>
+                
+                <div class="mt-4 border-t border-gray-700 pt-4">
+                    <h4 class="text-xs font-bold mb-2 text-gray-300">Configuração de E-mail (Opcional)</h4>
+                    <input id="smtpUser" type="email" placeholder="Seu Gmail" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm mb-2 text-white">
+                    <input id="smtpPass" type="password" placeholder="Senha de App (App Password)" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm mb-1 text-white">
+                    <a href="https://myaccount.google.com/apppasswords" target="_blank" class="text-xs text-blue-400 hover:underline mb-2 block">Criar Senha de App</a>
+                </div>
+
+                <button onclick="savePaymentPrefs()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm w-full mt-2 font-bold transition">Salvar Preferências</button>
+                <div id="paymentSaveMsg" class="text-xs text-gray-400 mt-2 text-center h-4"></div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
