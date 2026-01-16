@@ -162,10 +162,35 @@ const db = new sqlite3.Database(dbPath, (err) => {
             
             // Create Settings Table
             db.run(`CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT
+                user_id INTEGER,
+                key TEXT,
+                value TEXT,
+                PRIMARY KEY (user_id, key)
             )`, (err) => {
                 if (err) console.error("Error creating settings table:", err);
+                else {
+                    // Migration: Check if we need to migrate from old schema (key, value)
+                    db.all("PRAGMA table_info(settings)", (err, columns) => {
+                        if (err) return;
+                        const hasUserId = columns.some(col => col.name === 'user_id');
+                        if (!hasUserId) {
+                            console.log("Migrating settings table to support user_id...");
+                            db.serialize(() => {
+                                db.run("ALTER TABLE settings RENAME TO settings_old");
+                                db.run(`CREATE TABLE settings (
+                                    user_id INTEGER,
+                                    key TEXT,
+                                    value TEXT,
+                                    PRIMARY KEY (user_id, key)
+                                )`);
+                                // Migrate existing settings to Master Admin (ID 1)
+                                db.run("INSERT INTO settings (user_id, key, value) SELECT 1, key, value FROM settings_old");
+                                db.run("DROP TABLE settings_old");
+                                console.log("Settings table migrated successfully.");
+                            });
+                        }
+                    });
+                }
             });
 
             seedUsers();
@@ -231,9 +256,16 @@ function runSubscriptionsGeneration() {
     const today = new Date();
     const currentMonth = today.toISOString().slice(0, 7);
     const day = today.getDate();
-    db.all("SELECT * FROM subscriptions WHERE status = 'active'", (err, subs) => {
+    db.all(`
+        SELECT s.*, u.plan AS user_plan
+        FROM subscriptions s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.status = 'active'
+    `, (err, subs) => {
         if (err || !subs) return;
         subs.forEach(sub => {
+            // Skip automatic generation for FREE plan users
+            if (sub.user_plan === 'free') return;
             if (sub.last_generated_month === currentMonth) return;
             if (sub.day_of_month > day) return;
             const due_day = String(sub.day_of_month).padStart(2, '0');
@@ -690,6 +722,7 @@ app.put('/api/admin/users/:id/status', (req, res) => {
 // Admin Stats
 app.get('/api/admin/stats', (req, res) => {
     const adminId = parseInt(req.headers['x-user-id']);
+    console.log(`[DEBUG] GET /api/admin/stats - AdminID: ${adminId}`);
     if (!adminId) return res.status(401).json({ error: "Unauthorized" });
 
     const stats = {
@@ -703,7 +736,7 @@ app.get('/api/admin/stats', (req, res) => {
     };
 
     // Get Prices and Settings
-    db.all("SELECT key, value FROM settings", (err, settings) => {
+    db.all("SELECT key, value FROM settings WHERE user_id = ?", [adminId], (err, settings) => {
         if (!err && settings) {
             settings.forEach(s => {
                 if (s.key === 'price_free') stats.prices.free = parseFloat(s.value);
@@ -757,18 +790,22 @@ app.get('/api/admin/stats', (req, res) => {
 
 // Admin: Update Settings
 app.put('/api/admin/settings', (req, res) => {
+    const adminId = parseInt(req.headers['x-user-id']);
+    console.log(`[DEBUG] PUT /api/admin/settings - AdminID: ${adminId}`);
+    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+
     const { prices, pix_key } = req.body;
     
-    const stmt = db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
+    const stmt = db.prepare("INSERT OR REPLACE INTO settings (user_id, key, value) VALUES (?, ?, ?)");
     
     if (prices) {
-        stmt.run('price_free', prices.free);
-        stmt.run('price_pro', prices.pro);
-        stmt.run('price_premium', prices.premium);
+        stmt.run(adminId, 'price_free', prices.free);
+        stmt.run(adminId, 'price_pro', prices.pro);
+        stmt.run(adminId, 'price_premium', prices.premium);
     }
     
     if (pix_key !== undefined) {
-        stmt.run('pix_key', pix_key);
+        stmt.run(adminId, 'pix_key', pix_key);
     }
     
     stmt.finalize();
@@ -962,14 +999,24 @@ app.post('/api/subscriptions', (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const { name, email, phone, product, value, day_of_month } = req.body;
     if (!name || !value || !day_of_month) return res.status(400).json({ error: 'Nome, valor e dia são obrigatórios' });
-    db.run(
-        `INSERT INTO subscriptions (user_id, name, email, phone, product, value, day_of_month, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
-        [userId, name, email, phone, product, value, day_of_month],
-        function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ id: this.lastID, user_id: userId, name, email, phone, product, value, day_of_month, status: 'active' });
+    
+    // Block automatic subscriptions for FREE plan users
+    db.get("SELECT plan FROM users WHERE id = ?", [userId], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+        if (user.plan === 'free') {
+            return res.status(403).json({ error: 'Usuário do plano FREE não pode usar cobrança automática (assinaturas).' });
         }
-    );
+
+        db.run(
+            `INSERT INTO subscriptions (user_id, name, email, phone, product, value, day_of_month, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+            [userId, name, email, phone, product, value, day_of_month],
+            function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ id: this.lastID, user_id: userId, name, email, phone, product, value, day_of_month, status: 'active' });
+            }
+        );
+    });
 });
 
 app.put('/api/subscriptions/:id', (req, res) => {
@@ -1003,97 +1050,105 @@ app.post('/api/subscriptions/run', (req, res) => {
 });
 
 // AI Message Generation Route
-app.post('/api/ai/generate-message', async (req, res) => {
-    const { clientName, value, dueDate, product, tone } = req.body;
-    
-    // Get API Key from environment variable
-    const apiKey = process.env.GEMINI_API_KEY;
-    
-    if (!apiKey) {
-        return res.status(500).json({ 
-            error: "Chave de API do Google Gemini não configurada. Configure a variável de ambiente GEMINI_API_KEY." 
-        });
+app.post('/api/ai/generate-message', (req, res) => {
+    const userId = req.headers['x-user-id'];
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // List of models to try in order of preference
-    // Structure: { model: string, config: RequestOptions }
-    const modelsToTry = [
-        { model: "gemini-2.0-flash", config: {} }, // New detected model
-        { model: "gemini-2.0-flash-lite", config: {} },
-        { model: "gemini-flash-latest", config: {} },
-        { model: "gemini-1.5-flash", config: {} }, 
-        { model: "gemini-1.5-flash", config: { apiVersion: "v1" } }, 
-        { model: "gemini-pro", config: { apiVersion: "v1" } }
-    ];
-
-    let lastError = null;
-
-    for (const option of modelsToTry) {
-        try {
-            const modelName = option.model;
-            console.log(`Tentando gerar mensagem com modelo: ${modelName} (API: ${option.config.apiVersion || 'default'})`);
-            
-            const model = genAI.getGenerativeModel({ 
-                model: modelName,
-                ...option.config
-            });
-
-            const prompt = `Escreva uma mensagem curta de cobrança para WhatsApp (apenas o texto da mensagem).
-            Cliente: ${clientName}
-            Valor: R$ ${value}
-            Vencimento: ${dueDate}
-            Produto: ${product}
-            Tom: ${tone || 'educado'}
-            
-            Instruções:
-            - Seja ${tone || 'educado'}.
-            - Inclua os dados da dívida.
-            - Não coloque "Assunto:".
-            - Use emojis se o tom permitir.
-            - Mantenha curto e direto para leitura no celular.`;
-
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
-            
-            // If successful, return immediately
-            return res.json({ message: text, model_used: `${modelName} (${option.config.apiVersion || 'v1beta'})` });
-        } catch (error) {
-            console.warn(`Falha com modelo ${option.model}:`, error.message);
-            lastError = error;
-            // Continue to next model
+    db.get("SELECT plan FROM users WHERE id = ?", [userId], async (err, user) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
         }
-    }
+        if (!user) {
+            return res.status(404).json({ error: "Usuário não encontrado" });
+        }
+        if (user.plan === 'free') {
+            return res.status(403).json({ error: "Usuário do plano FREE não pode usar mensagens com IA." });
+        }
 
-    // If all models fail, try to list available models for debugging
-    try {
-        console.log("Tentando listar modelos disponíveis para diagnóstico...");
-        // Using direct fetch for diagnostics since SDK listModels might be complex to access here
-        const listResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const { clientName, value, dueDate, product, tone } = req.body;
+        const apiKey = process.env.GEMINI_API_KEY;
         
-        if (listResponse.ok) {
-            const listData = await listResponse.json();
-            const availableModels = listData.models ? listData.models.map(m => m.name).join(', ') : 'Nenhum modelo retornado';
-            console.error("DIAGNÓSTICO - Modelos Disponíveis:", availableModels);
-            
+        if (!apiKey) {
             return res.status(500).json({ 
-                error: `Falha em todos os modelos. Modelos disponíveis na sua conta: ${availableModels}. Erro original: ${lastError?.message}`
-            });
-        } else {
-            const errorText = await listResponse.text();
-            console.error("DIAGNÓSTICO - Falha ao listar modelos:", errorText);
-            return res.status(500).json({ 
-                error: `Falha total. Não foi possível nem listar os modelos. Verifique se a API 'Generative Language API' está habilitada no Google Cloud Console. Erro da API: ${errorText}`
+                error: "Chave de API do Google Gemini não configurada. Configure a variável de ambiente GEMINI_API_KEY." 
             });
         }
-    } catch (diagError) {
-        console.error("Erro no diagnóstico:", diagError);
-    }
 
-    // Fallback error response
-    res.status(500).json({ error: "Falha ao gerar mensagem com IA (todos os modelos falharam): " + (lastError ? lastError.message : "Erro desconhecido") });
+        const genAI = new GoogleGenerativeAI(apiKey);
+        
+        const modelsToTry = [
+            { model: "gemini-2.0-flash", config: {} },
+            { model: "gemini-2.0-flash-lite", config: {} },
+            { model: "gemini-flash-latest", config: {} },
+            { model: "gemini-1.5-flash", config: {} }, 
+            { model: "gemini-1.5-flash", config: { apiVersion: "v1" } }, 
+            { model: "gemini-pro", config: { apiVersion: "v1" } }
+        ];
+
+        let lastError = null;
+
+        for (const option of modelsToTry) {
+            try {
+                const modelName = option.model;
+                console.log(`Tentando gerar mensagem com modelo: ${modelName} (API: ${option.config.apiVersion || 'default'})`);
+                
+                const model = genAI.getGenerativeModel({ 
+                    model: modelName,
+                    ...option.config
+                });
+
+                const prompt = `Escreva uma mensagem curta de cobrança para WhatsApp (apenas o texto da mensagem).
+                Cliente: ${clientName}
+                Valor: R$ ${value}
+                Vencimento: ${dueDate}
+                Produto: ${product}
+                Tom: ${tone || 'educado'}
+                
+                Instruções:
+                - Seja ${tone || 'educado'}.
+                - Inclua os dados da dívida.
+                - Não coloque "Assunto:".
+                - Use emojis se o tom permitir.
+                - Mantenha curto e direto para leitura no celular.`;
+
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                const text = response.text();
+                
+                return res.json({ message: text, model_used: `${modelName} (${option.config.apiVersion || 'v1beta'})` });
+            } catch (error) {
+                console.warn(`Falha com modelo ${option.model}:`, error.message);
+                lastError = error;
+            }
+        }
+
+        try {
+            console.log("Tentando listar modelos disponíveis para diagnóstico...");
+            const listResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            
+            if (listResponse.ok) {
+                const listData = await listResponse.json();
+                const availableModels = listData.models ? listData.models.map(m => m.name).join(', ') : 'Nenhum modelo retornado';
+                console.error("DIAGNÓSTICO - Modelos Disponíveis:", availableModels);
+                
+                return res.status(500).json({ 
+                    error: `Falha em todos os modelos. Modelos disponíveis na sua conta: ${availableModels}. Erro original: ${lastError?.message}`
+                });
+            } else {
+                const errorText = await listResponse.text();
+                console.error("DIAGNÓSTICO - Falha ao listar modelos:", errorText);
+                return res.status(500).json({ 
+                    error: `Falha total. Não foi possível nem listar os modelos. Verifique se a API 'Generative Language API' está habilitada no Google Cloud Console. Erro da API: ${errorText}`
+                });
+            }
+        } catch (diagError) {
+            console.error("Erro no diagnóstico:", diagError);
+        }
+
+        res.status(500).json({ error: "Falha ao gerar mensagem com IA (todos os modelos falharam): " + (lastError ? lastError.message : "Erro desconhecido") });
+    });
 });
 
 // Upload Logo Route

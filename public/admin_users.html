@@ -891,6 +891,12 @@
         async function generateAdminAiMessage() {
             if (!currentAiUser) return;
             
+            const planPrice = pricing[currentAiUser.plan] || 0;
+            if (currentAiUser.plan === 'free' && planPrice === 0) {
+                alert('Usuários do plano Free não precisam ser cobrados com mensagem de IA.');
+                return;
+            }
+
             const tone = document.getElementById('aiTone').value;
             const loading = document.getElementById('aiLoading');
             const resultDiv = document.getElementById('aiResult');
@@ -901,7 +907,6 @@
             resultDiv.classList.add('hidden');
             sendBtn.classList.add('hidden');
 
-            const planPrice = pricing[currentAiUser.plan] || 0;
             const formattedValue = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(planPrice);
             const formattedDate = currentAiUser.due_date ? currentAiUser.due_date.split('-').reverse().join('/') : 'Data a definir';
 

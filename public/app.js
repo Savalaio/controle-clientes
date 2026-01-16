@@ -736,6 +736,10 @@ function closeAiModal() {
 
 async function generateAiMessage() {
     if (!currentAiClient) return;
+    if (currentUser && currentUser.plan === 'free') {
+        alert('Seu plano é FREE. Mensagens com IA estão disponíveis apenas para planos pagos.');
+        return;
+    }
     
     const tone = document.getElementById('aiTone').value;
     const loading = document.getElementById('aiLoading');

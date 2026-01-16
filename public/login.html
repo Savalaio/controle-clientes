@@ -34,14 +34,18 @@
             <h1 class="text-2xl font-bold">Login</h1>
         </div>
 
-        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-6">
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-6" autocomplete="off">
+            <!-- Dummy inputs to confuse browser autofill -->
+            <input type="text" style="opacity: 0; position: absolute; height: 0; width: 0; z-index: -1;">
+            <input type="password" style="opacity: 0; position: absolute; height: 0; width: 0; z-index: -1;">
+
             <div class="relative">
-                <input type="email" id="email" placeholder="E-mail" required 
+                <input type="email" id="email" name="email_field_random_123" placeholder="E-mail" required autocomplete="off" readonly onfocus="this.removeAttribute('readonly');"
                     class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
             </div>
 
             <div class="relative">
-                <input type="password" id="password" placeholder="Senha" required 
+                <input type="password" id="password" name="password_field_random_123" placeholder="Senha" required autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');"
                     class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
             </div>
 
@@ -101,6 +105,28 @@
     </div>
 
     <script>
+        // Force clear inputs on load to prevent autocomplete
+        window.addEventListener('load', function() {
+            const email = document.getElementById('email');
+            const password = document.getElementById('password');
+
+            function clearFields() {
+                if (email) email.value = '';
+                if (password) password.value = '';
+            }
+
+            clearFields();
+
+            let runs = 0;
+            const interval = setInterval(function() {
+                clearFields();
+                runs++;
+                if (runs >= 10) {
+                    clearInterval(interval);
+                }
+            }, 200);
+        });
+
         function openHelpModal() {
             document.getElementById('helpModal').classList.remove('hidden');
         }
