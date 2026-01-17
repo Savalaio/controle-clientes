@@ -1380,19 +1380,29 @@ app.post('/api/upload-logo', upload.single('logo'), (req, res) => {
 app.post('/api/invoice-share', (req, res) => {
     const userId = req.headers['x-user-id'];
     const { client_name, value, due_date, logo } = req.body;
-    
-    // Generate short ID (8 chars)
     const crypto = require('crypto');
     const id = crypto.randomBytes(4).toString('hex');
-    
-    db.run(
-        `INSERT INTO invoice_shares (id, user_id, client_name, value, due_date, logo) VALUES (?, ?, ?, ?, ?, ?)`,
-        [id, userId || null, client_name, value, due_date, logo],
-        (err) => {
+
+    const insertShare = (finalLogo) => {
+        db.run(
+            `INSERT INTO invoice_shares (id, user_id, client_name, value, due_date, logo) VALUES (?, ?, ?, ?, ?, ?)`,
+            [id, userId || null, client_name, value, due_date, finalLogo || null],
+            (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ id, url: `${req.protocol}://${req.get('host')}/share/${id}` });
+            }
+        );
+    };
+
+    if (userId) {
+        db.get("SELECT logo FROM users WHERE id = ?", [userId], (err, user) => {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ id, url: `${req.protocol}://${req.get('host')}/share/${id}` });
-        }
-    );
+            const finalLogo = (user && user.logo) ? user.logo : logo;
+            insertShare(finalLogo);
+        });
+    } else {
+        insertShare(logo);
+    }
 });
 
 // Dynamic Invoice Card for WhatsApp Preview (Short Link)
