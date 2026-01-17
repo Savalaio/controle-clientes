@@ -678,8 +678,7 @@ async function sendWhatsapp(phone, name, product, value, dueDate) {
                      client_name: name,
                      value: formattedValue,
                      due_date: formattedDate,
-                     pix_key: currentPaymentPrefs?.payment_pix_key || '',
-                     instructions: currentPaymentPrefs?.payment_instructions || ''
+                    logo: currentPaymentPrefs.logo
                  })
              });
              const data = await res.json();
