@@ -721,6 +721,23 @@ app.get('/api/admin/evolution/connect', async (req, res) => {
     }
 });
 
+// Test Send Message
+app.post('/api/admin/evolution/test', async (req, res) => {
+    const { phone } = req.body;
+    const apiUrl = process.env.EVOLUTION_API_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+
+    if (!phone) return res.status(400).json({ error: "Telefone obrigatório" });
+
+    try {
+        const result = await sendWhatsappMessage(phone, "Teste de conexão do Sistema Controle com Evolution API! 🚀");
+        res.json({ success: true, result });
+    } catch (error) {
+        res.status(500).json({ error: error.response ? error.response.data : error.message });
+    }
+});
+
 // Admin: Update User Role (Promote/Demote)
 app.put('/api/admin/users/:id/role', (req, res) => {
     const adminId = parseInt(req.headers['x-user-id']);

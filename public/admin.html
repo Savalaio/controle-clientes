@@ -370,7 +370,17 @@
                 <div id="wa-setup-step-success" class="hidden text-center">
                     <div class="text-green-500 text-5xl mb-4"><i class="fas fa-check-circle"></i></div>
                     <h4 class="text-lg font-bold text-white mb-2">Conectado com Sucesso!</h4>
-                    <p class="text-gray-400 text-sm">O envio automático de mensagens está ativo.</p>
+                    <p class="text-gray-400 text-sm mb-4">A instância <span id="wa-instance-name" class="font-mono text-white"></span> está ativa.</p>
+                    
+                    <div class="bg-gray-800 p-4 rounded-lg">
+                        <label class="block text-left text-xs text-gray-400 mb-1">Testar Envio (Seu WhatsApp)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="wa-test-phone" placeholder="5511999999999" class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:border-green-500 outline-none">
+                            <button onclick="sendTestMessage()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm transition">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -385,6 +395,24 @@
             checkWhatsappStatus(true);
         }
 
+        async function sendTestMessage() {
+            const phone = document.getElementById('wa-test-phone').value;
+            if(!phone) return alert("Digite um número para teste");
+            
+            try {
+                const res = await fetch(`${API_URL}/admin/evolution/test`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ phone })
+                });
+                const data = await res.json();
+                if(data.success) alert("Mensagem enviada com sucesso! Verifique seu WhatsApp.");
+                else alert("Erro ao enviar: " + JSON.stringify(data.error));
+            } catch(e) {
+                alert("Erro na requisição");
+            }
+        }
+
         async function checkWhatsappStatus(isModalOpen = false) {
             const statusEl = document.getElementById('whatsapp-status');
             const step1 = document.getElementById('wa-setup-step-1');
@@ -393,6 +421,7 @@
             const stepSuccess = document.getElementById('wa-setup-step-success');
             const qrContainer = document.getElementById('qrcode-container');
             const errorMsg = document.getElementById('wa-error-msg');
+            const instanceNameEl = document.getElementById('wa-instance-name');
 
             if(isModalOpen) {
                 step1.classList.remove('hidden');
@@ -422,6 +451,7 @@
                     if(isModalOpen) {
                         step1.classList.add('hidden');
                         stepSuccess.classList.remove('hidden');
+                        if(instanceNameEl) instanceNameEl.innerText = data.instanceName;
                     }
                 } else if (data.state === 'NOT_FOUND') {
                     statusEl.innerText = "Instância Inexistente";
