@@ -689,7 +689,8 @@ async function generateWhatsappMessage(phone, name, product, value, dueDate, sta
         diffDays = Math.round((due - todayDate) / (1000 * 60 * 60 * 24));
     }
     const normalizedStatus = (status || '').toString().trim().toLowerCase();
-    const isPaid = normalizedStatus === 'pago' || normalizedStatus === 'paid';
+    // Consider paid if status is 'pago'/'paid' OR if there is a paid_at date
+    const isPaid = normalizedStatus === 'pago' || normalizedStatus === 'paid' || (paidAt && paidAt !== 'null' && paidAt !== '');
     const formattedPaidAt = paidAt ? formatDate(paidAt) : '';
     let message;
 
