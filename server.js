@@ -1306,8 +1306,8 @@ app.patch('/api/clients/:id/pay', (req, res) => {
                 return res.json({ message: "success", changes: this.changes });
             }
 
-            // Calculate next month due date based on PAYMENT DATE (User request: "pegar a data do dia")
-            const parts = paid_at.split('-');
+            // Calculate next month due date (keeping day when possible - User request: "A DATA É A DO VENCIMENTO SEMPRE")
+            const parts = client.due_date.split('-');
             if (parts.length !== 3) {
                 return res.json({ message: "success", changes: this.changes });
             }
