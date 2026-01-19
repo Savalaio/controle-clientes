@@ -8,6 +8,7 @@ const multer = require('multer');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
+const cron = require('node-cron');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
@@ -95,9 +96,18 @@ const db = new sqlite3.Database(dbPath, (err) => {
                      if (err2 || !columns) return;
                      const hasCpf = columns.some(col => col.name === 'cpf');
                      if (!hasCpf) {
-                         db.run("ALTER TABLE clients ADD COLUMN cpf TEXT");
-                     }
-                 });
+                        db.run("ALTER TABLE clients ADD COLUMN cpf TEXT");
+                    }
+                });
+
+                // Migration: Add last_notification_sent if not exists
+                db.all("PRAGMA table_info(clients)", (err3, columns) => {
+                    if (err3 || !columns) return;
+                    const hasNotif = columns.some(col => col.name === 'last_notification_sent');
+                    if (!hasNotif) {
+                        db.run("ALTER TABLE clients ADD COLUMN last_notification_sent TEXT");
+                    }
+                });
             }
         });
 
@@ -258,12 +268,91 @@ const db = new sqlite3.Database(dbPath, (err) => {
         
         setInterval(runSubscriptionsGeneration, 60 * 60 * 1000);
         runSubscriptionsGeneration();
+        
+        // Cron Job: Verificação diária de vencimentos (09:00 AM)
+        cron.schedule('0 9 * * *', () => {
+            console.log('--- [Cron] Iniciando verificação automática de vencimentos ---');
+            checkDueDatesAndNotify();
+        });
     }
 });
 
 function startServer() {
     app.listen(PORT, () => {
         console.log(`Server running on http://localhost:${PORT}`);
+    });
+}
+
+function checkDueDatesAndNotify() {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Calcular data de aviso prévio (ex: 3 dias antes)
+    const warningDate = new Date(today);
+    warningDate.setDate(today.getDate() + 3);
+    const warningDateStr = warningDate.toISOString().split('T')[0];
+
+    console.log(`[Cron] Verificando vencimentos para hoje (${todayStr}) e prévia (${warningDateStr})`);
+
+    // Buscar clientes pendentes que vencem hoje ou na data de aviso
+    // E que ainda não foram notificados hoje
+    const query = `
+        SELECT c.*, u.payment_pix_key, u.payment_instructions, u.smtp_user, u.smtp_pass
+        FROM clients c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.status = 'Pendente'
+        AND (c.due_date = ? OR c.due_date = ?)
+        AND (c.last_notification_sent IS NULL OR c.last_notification_sent != ?)
+    `;
+
+    db.all(query, [todayStr, warningDateStr, todayStr], (err, clients) => {
+        if (err) {
+            console.error('[Cron] Erro ao buscar clientes:', err);
+            return;
+        }
+
+        if (!clients || clients.length === 0) {
+            console.log('[Cron] Nenhum cliente para notificar hoje.');
+            return;
+        }
+
+        console.log(`[Cron] Encontrados ${clients.length} clientes para notificar.`);
+
+        clients.forEach(client => {
+            // Lógica de Envio de Notificação
+            
+            // 1. Envio por E-mail (Nativo)
+            if (client.email) {
+                const isToday = client.due_date === todayStr;
+                const subject = isToday 
+                    ? `Lembrete: Sua fatura vence HOJE - ${client.product}`
+                    : `Lembrete: Sua fatura vence em breve - ${client.product}`;
+                
+                const html = getInvoiceHtml(
+                    client.name, 
+                    client.value, 
+                    client.due_date, 
+                    client.product, 
+                    client.payment_pix_key, 
+                    client.payment_instructions
+                );
+
+                console.log(`[Cron] Enviando e-mail para ${client.name} (${client.email})...`);
+                sendClientEmail(client.user_id, client.email, subject, html);
+            }
+
+            // 2. Envio por WhatsApp (Requer API Externa)
+            // Como não temos API configurada, deixamos o log.
+            // Se houver uma integração futura, ela entra aqui.
+            if (client.phone) {
+                console.log(`[Cron] Cliente ${client.name} tem WhatsApp (${client.phone}), mas envio automático requer API externa.`);
+            }
+
+            // Atualizar last_notification_sent
+            db.run("UPDATE clients SET last_notification_sent = ? WHERE id = ?", [todayStr, client.id], (err) => {
+                if (err) console.error(`[Cron] Erro ao atualizar status de notificação do cliente ${client.id}:`, err);
+            });
+        });
     });
 }
 
@@ -461,6 +550,13 @@ app.get('/api/admin/users', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
+});
+
+// Admin: Force Run Notification Check (Manual Trigger)
+app.post('/api/admin/force-notifications', (req, res) => {
+    console.log("--- [Manual] Forçando verificação de notificações ---");
+    checkDueDatesAndNotify();
+    res.json({ message: "Verificação de notificações iniciada em background." });
 });
 
 // Admin: Update User Role (Promote/Demote)
