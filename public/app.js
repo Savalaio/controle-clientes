@@ -122,7 +122,7 @@ function openBatchModal() {
                     <td class="p-3 font-mono text-gray-300">${formatCurrency(client.value)}</td>
                     <td class="p-3 text-sm text-gray-400">${formatDate(client.due_date)}</td>
                     <td class="p-3 text-right">
-                        <button onclick="sendWhatsapp('${client.phone}', '${client.name}', '${client.product}', ${client.value}, '${client.due_date}')"
+                        <button onclick="sendWhatsapp('${client.phone}', '${client.name}', '${client.product}', ${client.value}, '${client.due_date}', '${client.status}')"
                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm inline-flex items-center gap-1 transition">
                             <i class="fas fa-paper-plane"></i> Enviar
                         </button>
@@ -355,6 +355,8 @@ function renderTable(clients) {
             const safeDueDate = client.due_date || '';
             const safeId = client.id;
 
+            const safePaidAt = client.paid_at || '';
+
             tr.innerHTML = `
                 <td class="p-4 font-semibold text-white" data-label="Nome">${safeName}</td>
                 <td class="p-4 text-sm" data-label="Email/Tel">
@@ -373,7 +375,7 @@ function renderTable(clients) {
                 <td class="p-4 text-sm text-gray-400" data-label="Pago Em">${client.paid_at ? formatDate(client.paid_at) : '-'}</td>
                 <td class="p-4 text-center" data-label="Ações">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="sendWhatsapp('${safePhone}', '${safeName}', '${safeProduct}', ${safeValue}, '${safeDueDate}')" 
+                        <button onclick="openWhatsappModal(${index})" 
                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1" title="Cobrar no WhatsApp">
                             <i class="fas fa-comment"></i>
                         </button>
@@ -478,6 +480,26 @@ function formatDate(dateString) {
     if (!dateString) return '-';
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}/${year}`;
+}
+
+function getNextMonthDate(dateString) {
+    if (!dateString) return null;
+    const [yearStr, monthStr, dayStr] = dateString.split('-');
+    let year = parseInt(yearStr, 10);
+    let month = parseInt(monthStr, 10);
+    const day = parseInt(dayStr, 10);
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+    month += 1;
+    if (month > 12) {
+        month = 1;
+        year += 1;
+    }
+    const base = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0).getDate();
+    const finalDay = Math.min(day, lastDay);
+    const mm = String(month).padStart(2, '0');
+    const dd = String(finalDay).padStart(2, '0');
+    return `${year}-${mm}-${dd}`;
 }
 
 function filterStatus(status) {
@@ -634,14 +656,10 @@ async function savePaymentPrefs() {
     }
 }
 
-async function sendWhatsapp(phone, name, product, value, dueDate) {
+async function generateWhatsappMessage(phone, name, product, value, dueDate, status, paidAt) {
     if (!phone) {
-        alert('Cliente sem telefone cadastrado!');
-        return;
+        throw new Error('Cliente sem telefone cadastrado!');
     }
-    
-    // Remove non-numeric chars
-    const cleanPhone = phone.replace(/\D/g, '');
     const formattedValue = formatCurrency(value);
     const formattedDate = formatDate(dueDate);
     
@@ -655,15 +673,44 @@ async function sendWhatsapp(phone, name, product, value, dueDate) {
     }
     let paymentLine = '';
     const pm = currentPaymentPrefs?.payment_method || 'whatsapp';
+    const rawInstructions = (currentPaymentPrefs?.payment_instructions || '').trim();
     if (pm === 'pix' && currentPaymentPrefs?.payment_pix_key) {
         paymentLine = `\n\nChave PIX: *${currentPaymentPrefs.payment_pix_key}*`;
-        if (currentPaymentPrefs?.payment_instructions) {
-            paymentLine += `\n${currentPaymentPrefs.payment_instructions}`;
-        }
-    } else if ((pm === 'link' || pm === 'boleto') && currentPaymentPrefs?.payment_instructions) {
-        paymentLine = `\n\n${currentPaymentPrefs.payment_instructions}`;
+        paymentLine += `\nPagar via PIX de preferência.`;
+    } else if ((pm === 'link' || pm === 'boleto') && rawInstructions) {
+        paymentLine = `\n\n${rawInstructions}`;
     }
-    let message = `Olá ${name}, lembramos que sua fatura referente a *${product}* no valor de *${formattedValue}* venceu em *${formattedDate}*.${paymentLine}`;
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    let diffDays = null;
+    if (dueDate) {
+        const due = new Date(dueDate + 'T00:00:00');
+        const todayDate = new Date(todayStr + 'T00:00:00');
+        diffDays = Math.round((due - todayDate) / (1000 * 60 * 60 * 24));
+    }
+    const normalizedStatus = (status || '').toString().trim().toLowerCase();
+    const isPaid = normalizedStatus === 'pago' || normalizedStatus === 'paid';
+    const formattedPaidAt = paidAt ? formatDate(paidAt) : '';
+    let message;
+
+    if (isPaid) {
+        message = `Olá ${name}, sua fatura referente a *${product}* no valor de *${formattedValue}* está PAGO (vencimento: *${formattedDate}*). Muito obrigado!`;
+    } else {
+        let statusText;
+        if (diffDays !== null && diffDays < 0) {
+            statusText = `que está em atraso. Ela venceu em *${formattedDate}*`;
+        } else if (diffDays === 0) {
+            statusText = `que vence *hoje* (${formattedDate})`;
+        } else if (diffDays === 2) {
+            statusText = `que vai vencer em *${formattedDate}* (faltam 2 dias)`;
+        } else if (dueDate) {
+            statusText = `que vence em *${formattedDate}*`;
+        } else {
+            statusText = `com vencimento em *${formattedDate}*`;
+        }
+
+        message = `Olá ${name}, lembramos que sua fatura referente a *${product}* no valor de *${formattedValue}* ${statusText}.${paymentLine}`;
+    }
     
     if (currentPaymentPrefs?.logo) {
          // Generate rich preview short link
@@ -678,19 +725,79 @@ async function sendWhatsapp(phone, name, product, value, dueDate) {
                      client_name: name,
                      value: formattedValue,
                      due_date: formattedDate,
-                    logo: currentPaymentPrefs.logo
+                     logo: currentPaymentPrefs.logo,
+                     status,
+                     paid_at: formattedPaidAt
                  })
              });
-             const data = await res.json();
-             if (data.url) {
-                 message += `\n\nAcesse sua fatura: ${data.url}`;
-             }
+           const data = await res.json();
+           if (data.url) {
+               message += `\n\nVEJA O DETALHE > ${data.url}`;
+           }
          } catch(e) { console.error(e); }
     }
 
+    return message;
+}
+
+let currentWhatsappClient = null;
+
+async function openWhatsappModal(index) {
+    currentWhatsappClient = allClients[index];
+    if (!currentWhatsappClient) return;
+
+    const modal = document.getElementById('whatsappModal');
+    const loading = document.getElementById('whatsappLoading');
+    const resultDiv = document.getElementById('whatsappResult');
+    const textArea = document.getElementById('whatsappMessageText');
+    const sendBtn = document.getElementById('whatsappSendBtn');
+
+    modal.classList.remove('hidden');
+    loading.classList.remove('hidden');
+    resultDiv.classList.add('hidden');
+    sendBtn.classList.add('hidden');
+    textArea.value = '';
+
+    try {
+        const message = await generateWhatsappMessage(
+            currentWhatsappClient.phone,
+            currentWhatsappClient.name,
+            currentWhatsappClient.product,
+            currentWhatsappClient.value,
+            currentWhatsappClient.due_date,
+            currentWhatsappClient.status,
+            currentWhatsappClient.paid_at
+        );
+        textArea.value = message;
+        loading.classList.add('hidden');
+        resultDiv.classList.remove('hidden');
+        sendBtn.classList.remove('hidden');
+        sendBtn.style.display = 'flex';
+    } catch (e) {
+        loading.classList.add('hidden');
+        alert(e.message || 'Erro ao montar mensagem');
+        closeWhatsappModal();
+    }
+}
+
+function closeWhatsappModal() {
+    document.getElementById('whatsappModal').classList.add('hidden');
+    currentWhatsappClient = null;
+}
+
+function sendWhatsappFromModal() {
+    if (!currentWhatsappClient) return;
+    const phone = currentWhatsappClient.phone;
+    if (!phone) {
+        alert('Cliente sem telefone cadastrado!');
+        return;
+    }
+    const cleanPhone = phone.replace(/\D/g, '');
+    const message = document.getElementById('whatsappMessageText').value;
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
+    closeWhatsappModal();
 }
 
 async function sendEmail(clientId) {
@@ -807,6 +914,9 @@ window.openAiModal = openAiModal;
 window.closeAiModal = closeAiModal;
 window.generateAiMessage = generateAiMessage;
 window.sendAiMessage = sendAiMessage;
+window.openWhatsappModal = openWhatsappModal;
+window.closeWhatsappModal = closeWhatsappModal;
+window.sendWhatsappFromModal = sendWhatsappFromModal;
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.openEditModal = openEditModal;

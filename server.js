@@ -238,8 +238,23 @@ const db = new sqlite3.Database(dbPath, (err) => {
             value TEXT,
             due_date TEXT,
             logo TEXT,
+            status TEXT,
+            paid_at TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
+        )`, (err) => {
+            if (err) return;
+            db.all("PRAGMA table_info(invoice_shares)", (err2, columns) => {
+                if (err2 || !columns) return;
+                const hasStatus = columns.some(col => col.name === 'status');
+                const hasPaidAt = columns.some(col => col.name === 'paid_at');
+                if (!hasStatus) {
+                    db.run("ALTER TABLE invoice_shares ADD COLUMN status TEXT");
+                }
+                if (!hasPaidAt) {
+                    db.run("ALTER TABLE invoice_shares ADD COLUMN paid_at TEXT");
+                }
+            });
+        });
         
         setInterval(runSubscriptionsGeneration, 60 * 60 * 1000);
         runSubscriptionsGeneration();
@@ -1267,23 +1282,79 @@ app.put('/api/clients/:id', (req, res) => {
     });
 });
 
-// Update client status (Mark as Paid)
+// Update client status (Mark as Paid) and optionally create next month invoice
 app.patch('/api/clients/:id/pay', (req, res) => {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { id } = req.params;
     const paid_at = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const sql = `UPDATE clients SET status = 'Pago', paid_at = ? WHERE id = ? AND user_id = ?`;
+    const updateSql = `UPDATE clients SET status = 'Pago', paid_at = ? WHERE id = ? AND user_id = ?`;
     
-    db.run(sql, [paid_at, id, userId], function (err) {
+    db.run(updateSql, [paid_at, id, userId], function (err) {
         if (err) {
-            res.status(400).json({ error: err.message });
-            return;
+            return res.status(400).json({ error: err.message });
         }
-        res.json({
-            message: "success",
-            changes: this.changes
+
+        // Fetch original invoice to clone
+        db.get("SELECT * FROM clients WHERE id = ? AND user_id = ?", [id, userId], (err2, client) => {
+            if (err2 || !client) {
+                return res.json({ message: "success", changes: this.changes });
+            }
+
+            if (!client.due_date) {
+                return res.json({ message: "success", changes: this.changes });
+            }
+
+            // Calculate next month due date (keeping day when possible)
+            const parts = client.due_date.split('-');
+            if (parts.length !== 3) {
+                return res.json({ message: "success", changes: this.changes });
+            }
+            let year = parseInt(parts[0], 10);
+            let month = parseInt(parts[1], 10);
+            const day = parseInt(parts[2], 10);
+            if (isNaN(year) || isNaN(month) || isNaN(day)) {
+                return res.json({ message: "success", changes: this.changes });
+            }
+            month += 1;
+            if (month > 12) {
+                month = 1;
+                year += 1;
+            }
+            const base = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0).getDate();
+            const finalDay = Math.min(day, lastDay);
+            const mm = String(month).padStart(2, '0');
+            const dd = String(finalDay).padStart(2, '0');
+            const nextDueDate = `${year}-${mm}-${dd}`;
+
+            const insertSql = `INSERT INTO clients (user_id, name, email, phone, cpf, product, due_date, value, status) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pendente')`;
+            const params = [
+                userId,
+                client.name,
+                client.email,
+                client.phone,
+                client.cpf,
+                client.product,
+                nextDueDate,
+                client.value
+            ];
+
+            db.run(insertSql, params, function (err3) {
+                if (err3) {
+                    console.error("Erro ao criar próxima fatura:", err3);
+                }
+                res.json({
+                    message: "success",
+                    changes: this.changes,
+                    next_invoice: {
+                        id: this.lastID,
+                        due_date: nextDueDate
+                    }
+                });
+            });
         });
     });
 });
@@ -1379,14 +1450,14 @@ app.post('/api/upload-logo', upload.single('logo'), (req, res) => {
 // Create Shared Invoice Link
 app.post('/api/invoice-share', (req, res) => {
     const userId = req.headers['x-user-id'];
-    const { client_name, value, due_date, logo } = req.body;
+    const { client_name, value, due_date, logo, status, paid_at } = req.body;
     const crypto = require('crypto');
     const id = crypto.randomBytes(4).toString('hex');
 
     const insertShare = (finalLogo) => {
         db.run(
-            `INSERT INTO invoice_shares (id, user_id, client_name, value, due_date, logo) VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, userId || null, client_name, value, due_date, finalLogo || null],
+            `INSERT INTO invoice_shares (id, user_id, client_name, value, due_date, logo, status, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [id, userId || null, client_name, value, due_date, finalLogo || null, status || null, paid_at || null],
             (err) => {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ id, url: `${req.protocol}://${req.get('host')}/share/${id}` });
@@ -1412,9 +1483,51 @@ app.get('/share/:id', (req, res) => {
     db.get("SELECT * FROM invoice_shares WHERE id = ?", [id], (err, row) => {
         if (err || !row) return res.status(404).send('Fatura não encontrada');
         
-        const { client_name, value, due_date, logo } = row;
+        const { client_name, value, due_date, logo, status, paid_at } = row;
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         const logoUrl = logo ? (logo.startsWith('http') ? logo : `${baseUrl}${logo}`) : '';
+        
+        let paymentInfoRows = `
+                    <div class="flex justify-between border-b border-gray-600 pb-2">
+                        <span class="text-gray-400">Valor</span>
+                        <span class="font-bold text-green-400 text-xl">${value}</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-600 py-2">
+                        <span class="text-gray-400">Vencimento</span>
+                        <span class="font-bold text-white">${due_date}</span>
+                    </div>
+        `;
+
+        if (status) {
+            const normalizedStatus = status.toString().trim().toLowerCase();
+            let statusColor = 'text-blue-400';
+            let statusLabel = status;
+            if (normalizedStatus === 'pago' || normalizedStatus === 'paid') {
+                statusColor = 'text-green-400';
+                statusLabel = 'Pago';
+            } else if (normalizedStatus === 'pendente' || normalizedStatus === 'pending') {
+                statusColor = 'text-yellow-400';
+                statusLabel = 'Pendente';
+            } else if (normalizedStatus === 'em atraso' || normalizedStatus === 'overdue') {
+                statusColor = 'text-red-400';
+                statusLabel = 'Em atraso';
+            }
+            paymentInfoRows += `
+                    <div class="flex justify-between pt-2">
+                        <span class="text-gray-400">Status</span>
+                        <span class="font-bold ${statusColor}">${statusLabel}</span>
+                    </div>
+            `;
+        }
+
+        if (paid_at) {
+            paymentInfoRows += `
+                    <div class="flex justify-between pt-2">
+                        <span class="text-gray-400">Pago em</span>
+                        <span class="font-bold text-white">${paid_at}</span>
+                    </div>
+            `;
+        }
         
         const html = `
         <!DOCTYPE html>
@@ -1438,14 +1551,7 @@ app.get('/share/:id', (req, res) => {
                 <p class="text-gray-400 mb-6">Olá <strong>${client_name}</strong>, aqui estão os detalhes da sua fatura.</p>
                 
                 <div class="bg-gray-700/50 p-4 rounded-xl mb-6 space-y-3">
-                    <div class="flex justify-between border-b border-gray-600 pb-2">
-                        <span class="text-gray-400">Valor</span>
-                        <span class="font-bold text-green-400 text-xl">${value}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-400">Vencimento</span>
-                        <span class="font-bold text-white">${due_date}</span>
-                    </div>
+                    ${paymentInfoRows}
                 </div>
             </div>
         </body>
