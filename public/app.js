@@ -702,7 +702,7 @@ async function generateWhatsappMessage(phone, name, product, value, dueDate, sta
         } else if (diffDays === 0) {
             statusText = `que vence *hoje* (${formattedDate})`;
         } else if (diffDays === 2) {
-            statusText = `que vai vencer em *${formattedDate}* (faltam 2 dias)`;
+            statusText = `que vence em *${formattedDate}* (daqui a 2 dias). Não esqueça de pagar para evitar atrasos!`;
         } else if (dueDate) {
             statusText = `que vence em *${formattedDate}*`;
         } else {
