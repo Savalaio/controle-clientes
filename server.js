@@ -9,6 +9,7 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const cron = require('node-cron');
+const axios = require('axios');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
@@ -341,11 +342,14 @@ function checkDueDatesAndNotify() {
                 sendClientEmail(client.user_id, client.email, subject, html);
             }
 
-            // 2. Envio por WhatsApp (Requer API Externa)
-            // Como não temos API configurada, deixamos o log.
-            // Se houver uma integração futura, ela entra aqui.
+            // 2. Envio por WhatsApp (Integração Evolution API)
             if (client.phone) {
-                console.log(`[Cron] Cliente ${client.name} tem WhatsApp (${client.phone}), mas envio automático requer API externa.`);
+                const message = generateWhatsappMessageText(client);
+                console.log(`[Cron] Tentando enviar WhatsApp para ${client.name} (${client.phone})...`);
+                
+                sendWhatsappMessage(client.phone, message)
+                    .then(() => console.log(`[Cron] WhatsApp enviado para ${client.name}`))
+                    .catch(err => console.error(`[Cron] Erro ao enviar WhatsApp para ${client.name}:`, err.message));
             }
 
             // Atualizar last_notification_sent
@@ -396,6 +400,92 @@ function runSubscriptionsGeneration() {
             );
         });
     });
+}
+
+// --- Evolution API Helpers ---
+
+function formatPhoneForEvolution(phone) {
+    // Remove non-digits
+    let clean = phone.replace(/\D/g, '');
+    // Check DDI (assuming BR 55 if not present and length suggests it)
+    if (clean.length >= 10 && clean.length <= 11) {
+        clean = '55' + clean;
+    }
+    return clean;
+}
+
+function generateWhatsappMessageText(client) {
+    // Simplified text generator for server-side
+    // Reuse logic similar to frontend but without DOM dependency
+    const formattedValue = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(client.value);
+    const [year, month, day] = client.due_date.split('-');
+    const formattedDate = `${day}/${month}/${year}`;
+    
+    // Check if overdue
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const dueDate = new Date(client.due_date + 'T00:00:00');
+    
+    const diffTime = dueDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    let statusText = '';
+    if (diffDays < 0) {
+        statusText = `que está em atraso. Ela venceu em *${formattedDate}*`;
+    } else if (diffDays === 0) {
+        statusText = `que vence *hoje* (${formattedDate})`;
+    } else {
+        statusText = `com vencimento em *${formattedDate}*`;
+    }
+
+    let message = `Olá ${client.name}, lembramos que sua fatura referente a *${client.product}* no valor de *${formattedValue}* ${statusText}.`;
+    
+    if (client.payment_pix_key) {
+        message += `\n\nChave PIX: ${client.payment_pix_key}`;
+    }
+    
+    if (client.payment_instructions) {
+        message += `\n\n${client.payment_instructions}`;
+    }
+
+    return message;
+}
+
+async function sendWhatsappMessage(phone, message) {
+    const apiUrl = process.env.EVOLUTION_API_URL; // e.g., https://evolution.seudominio.com
+    const apiKey = process.env.EVOLUTION_API_KEY; // Global API Key
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+
+    if (!apiUrl || !apiKey) {
+        throw new Error('Evolution API URL ou Key não configurada no servidor.');
+    }
+
+    const formattedPhone = formatPhoneForEvolution(phone);
+
+    try {
+        const url = `${apiUrl}/message/sendText/${instanceName}`;
+        const body = {
+            number: formattedPhone,
+            text: message,
+            options: {
+                delay: 1200,
+                presence: "composing",
+                linkPreview: true
+            }
+        };
+
+        const response = await axios.post(url, body, {
+            headers: {
+                'apikey': apiKey,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        return response.data;
+    } catch (error) {
+        console.error('Evolution API Error:', error.response ? error.response.data : error.message);
+        throw error;
+    }
 }
 
 function seedUsers() {
