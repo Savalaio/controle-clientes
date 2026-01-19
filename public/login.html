@@ -92,7 +92,7 @@
         </div>
         <div class="flex items-center gap-6">
             <a href="#planos" class="hidden md:block text-slate-300 hover:text-white transition text-sm font-medium">Planos</a>
-            <a href="#recursos" class="hidden md:block text-slate-300 hover:text-white transition text-sm font-medium">Recursos</a>
+            <a href="#" onclick="openHelpModal(); return false;" class="hidden md:block text-slate-300 hover:text-white transition text-sm font-medium">Recursos</a>
             <a href="register.html" class="inline-flex items-center justify-center px-5 py-2 text-sm font-medium text-white transition-colors duration-200 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 Criar Conta
             </a>
@@ -152,7 +152,7 @@
                             <i class="fas fa-chart-line text-xl"></i>
                         </div>
                         <div>
-                            <h3 class="font-semibold text-white">Dashboard Completo</h3>
+                            <h3 class="font-semibold text-white">PAINEL DE CONTROLE</h3>
                             <p class="text-sm text-slate-500">Métricas em tempo real.</p>
                         </div>
                     </div>
@@ -340,6 +340,12 @@
         </div>
     </section>
 
+    <!-- Floating WhatsApp Button -->
+    <a href="https://wa.me/5562999562787?text=Quero%20saber%20mais%20sobre%20o%20Controle%20de%20Cliente" target="_blank" class="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-lg shadow-green-500/30 transition-all hover:scale-110 flex items-center justify-center group animate-bounce" style="animation-duration: 3s;">
+        <i class="fab fa-whatsapp text-3xl"></i>
+        <span class="absolute right-full mr-4 bg-white text-slate-900 px-3 py-1 rounded-lg text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl pointer-events-none">Fale Conosco</span>
+    </a>
+
     <!-- Footer -->
     <footer class="py-12 border-t border-slate-800 bg-slate-950">
         <div class="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-8">
@@ -358,7 +364,7 @@
             <div>
                 <h4 class="font-bold text-white mb-4">Produto</h4>
                 <ul class="space-y-2 text-sm text-slate-400">
-                    <li><a href="#" class="hover:text-blue-400 transition">Recursos</a></li>
+                    <li><a href="#" onclick="openHelpModal(); return false;" class="hover:text-blue-400 transition">Recursos</a></li>
                     <li><a href="#planos" class="hover:text-blue-400 transition">Preços</a></li>
                     <li><a href="#" class="hover:text-blue-400 transition">API</a></li>
                 </ul>
