@@ -694,7 +694,7 @@ async function generateWhatsappMessage(phone, name, product, value, dueDate, sta
     let message;
 
     if (isPaid) {
-        message = `Olá ${name}, sua fatura referente a *${product}* no valor de *${formattedValue}* está PAGO (vencimento: *${formattedDate}*). Muito obrigado!`;
+        message = `Olá ${name}, muito obrigado pelo seu pagamento referente a *${product}*! Tenha um excelente dia!`;
     } else {
         let statusText;
         if (diffDays !== null && diffDays < 0) {
@@ -712,7 +712,7 @@ async function generateWhatsappMessage(phone, name, product, value, dueDate, sta
         message = `Olá ${name}, lembramos que sua fatura referente a *${product}* no valor de *${formattedValue}* ${statusText}.${paymentLine}`;
     }
     
-    if (currentPaymentPrefs?.logo) {
+    if (currentPaymentPrefs?.logo && !isPaid) {
          // Generate rich preview short link
          try {
              const res = await fetch(`${API_URL}/invoice-share`, {
