@@ -374,11 +374,19 @@
                     
                     <div class="bg-gray-800 p-4 rounded-lg">
                         <label class="block text-left text-xs text-gray-400 mb-1">Testar Envio (Seu WhatsApp)</label>
-                        <div class="flex gap-2">
+                        <div class="flex gap-2 mb-4">
                             <input type="text" id="wa-test-phone" placeholder="5511999999999" class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:border-green-500 outline-none">
                             <button onclick="sendTestMessage()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm transition">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
+                        </div>
+
+                        <div class="border-t border-gray-700 pt-4">
+                            <label class="block text-left text-xs text-gray-400 mb-2">Ações Manuais</label>
+                            <button onclick="forceCronCheck()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm transition flex items-center justify-center gap-2">
+                                <i class="fas fa-sync-alt"></i> Rodar Verificação de Vencimentos Agora
+                            </button>
+                            <p class="text-xs text-gray-500 mt-2">Isso vai verificar quem vence hoje/aviso e enviar as mensagens pendentes.</p>
                         </div>
                     </div>
                 </div>
@@ -393,6 +401,18 @@
         async function openWhatsappConfig() {
             document.getElementById('whatsappConfigModal').classList.remove('hidden');
             checkWhatsappStatus(true);
+        }
+
+        async function forceCronCheck() {
+            if(!confirm("Tem certeza? Isso vai verificar TODOS os clientes e enviar mensagens para quem vence hoje ou no aviso prévio.")) return;
+
+            try {
+                const res = await fetch(`${API_URL}/admin/force-notifications`, { method: 'POST' });
+                const data = await res.json();
+                alert(data.message);
+            } catch(e) {
+                alert("Erro ao disparar verificação: " + e.message);
+            }
         }
 
         async function sendTestMessage() {
