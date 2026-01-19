@@ -86,6 +86,22 @@
                 
                 <!-- KPI Cards Row 1: General Stats -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <!-- WhatsApp Status Card -->
+                    <div class="card-gradient-dark rounded-xl p-6 card-hover transition duration-300 border-l-4 border-green-500">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-gray-400 text-sm font-medium">WhatsApp Automático</p>
+                                <h3 class="text-lg font-bold text-white mt-1" id="whatsapp-status">Verificando...</h3>
+                            </div>
+                            <div class="p-3 bg-green-500/10 rounded-lg text-green-400">
+                                <i class="fab fa-whatsapp text-xl"></i>
+                            </div>
+                        </div>
+                        <button onclick="openWhatsappConfig()" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded transition w-full">
+                            Configurar / QR Code
+                        </button>
+                    </div>
+
                     <!-- Total Users -->
                     <div class="card-gradient-dark rounded-xl p-6 card-hover transition duration-300">
                         <div class="flex justify-between items-start mb-4">
@@ -310,7 +326,181 @@
         setInterval(updateTicketBadge, 10000);
         updateTicketBadge();
 
+    </script>
+
+    <!-- WhatsApp Config Modal -->
+    <div id="whatsappConfigModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-4">
+        <div class="bg-[#0f172a] rounded-xl border border-gray-800 w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="p-6 border-b border-gray-800 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fab fa-whatsapp text-green-500"></i> Configurar WhatsApp
+                </h3>
+                <button onclick="document.getElementById('whatsappConfigModal').classList.add('hidden')" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div id="wa-setup-step-1" class="text-center">
+                    <p class="text-gray-300 mb-4">Verificando conexão com Evolution API...</p>
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                </div>
+                
+                <div id="wa-setup-step-error" class="hidden text-center">
+                    <div class="text-red-500 text-5xl mb-4"><i class="fas fa-exclamation-circle"></i></div>
+                    <h4 class="text-lg font-bold text-white mb-2">Erro de Configuração</h4>
+                    <p class="text-gray-400 text-sm mb-4" id="wa-error-msg">Variáveis de ambiente não encontradas.</p>
+                    <div class="bg-gray-800 p-3 rounded text-left text-xs font-mono text-gray-300 break-all">
+                        EVOLUTION_API_URL=https://evo.realizador.com.br<br>
+                        EVOLUTION_API_KEY=429683C4C977415CAAFCCE10F7D57E11<br>
+                        EVOLUTION_INSTANCE_NAME=Controle
+                    </div>
+                </div>
+
+                <div id="wa-setup-step-qrcode" class="hidden text-center">
+                    <h4 class="text-lg font-bold text-white mb-2">Escaneie o QR Code</h4>
+                    <p class="text-gray-400 text-sm mb-4">Abra o WhatsApp no seu celular > Configurações > Aparelhos conectados > Conectar aparelho.</p>
+                    <div id="qrcode-container" class="bg-white p-2 rounded-lg inline-block mx-auto mb-4">
+                        <!-- QR Code Image will be injected here -->
+                    </div>
+                    <button onclick="checkWhatsappStatus()" class="block w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded transition">
+                        Já escaneei, verificar
+                    </button>
+                </div>
+
+                <div id="wa-setup-step-success" class="hidden text-center">
+                    <div class="text-green-500 text-5xl mb-4"><i class="fas fa-check-circle"></i></div>
+                    <h4 class="text-lg font-bold text-white mb-2">Conectado com Sucesso!</h4>
+                    <p class="text-gray-400 text-sm">O envio automático de mensagens está ativo.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
         const API_URL = '/api';
+
+        // --- WhatsApp Logic ---
+        async function openWhatsappConfig() {
+            document.getElementById('whatsappConfigModal').classList.remove('hidden');
+            checkWhatsappStatus(true);
+        }
+
+        async function checkWhatsappStatus(isModalOpen = false) {
+            const statusEl = document.getElementById('whatsapp-status');
+            const step1 = document.getElementById('wa-setup-step-1');
+            const stepError = document.getElementById('wa-setup-step-error');
+            const stepQr = document.getElementById('wa-setup-step-qrcode');
+            const stepSuccess = document.getElementById('wa-setup-step-success');
+            const qrContainer = document.getElementById('qrcode-container');
+            const errorMsg = document.getElementById('wa-error-msg');
+
+            if(isModalOpen) {
+                step1.classList.remove('hidden');
+                stepError.classList.add('hidden');
+                stepQr.classList.add('hidden');
+                stepSuccess.classList.add('hidden');
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/admin/evolution/status`);
+                const data = await res.json();
+
+                if (!data.configured) {
+                    statusEl.innerText = "Não Configurado";
+                    statusEl.className = "text-lg font-bold text-red-500 mt-1";
+                    if(isModalOpen) {
+                        step1.classList.add('hidden');
+                        stepError.classList.remove('hidden');
+                        errorMsg.innerText = data.message || "Variáveis de ambiente ausentes.";
+                    }
+                    return;
+                }
+
+                if (data.state === 'open') {
+                    statusEl.innerText = "Conectado";
+                    statusEl.className = "text-lg font-bold text-green-500 mt-1";
+                    if(isModalOpen) {
+                        step1.classList.add('hidden');
+                        stepSuccess.classList.remove('hidden');
+                    }
+                } else if (data.state === 'NOT_FOUND') {
+                    statusEl.innerText = "Instância Inexistente";
+                    statusEl.className = "text-lg font-bold text-yellow-500 mt-1";
+                    if(isModalOpen) {
+                        // Create instance
+                        createInstance();
+                    }
+                } else {
+                    // Connecting or Closed
+                    statusEl.innerText = "Desconectado/Aguardando";
+                    statusEl.className = "text-lg font-bold text-yellow-500 mt-1";
+                    if(isModalOpen) {
+                        loadQrCode();
+                    }
+                }
+
+            } catch (e) {
+                console.error(e);
+                statusEl.innerText = "Erro";
+                if(isModalOpen) {
+                    step1.classList.add('hidden');
+                    stepError.classList.remove('hidden');
+                    errorMsg.innerText = "Erro de conexão com o servidor.";
+                }
+            }
+        }
+
+        async function createInstance() {
+            try {
+                const res = await fetch(`${API_URL}/admin/evolution/init`, { method: 'POST' });
+                const data = await res.json();
+                if (data.instance || data.qrcode) {
+                    loadQrCode();
+                } else {
+                    alert('Erro ao criar instância: ' + JSON.stringify(data));
+                }
+            } catch(e) {
+                alert('Erro ao criar instância');
+            }
+        }
+
+        async function loadQrCode() {
+            const step1 = document.getElementById('wa-setup-step-1');
+            const stepQr = document.getElementById('wa-setup-step-qrcode');
+            const qrContainer = document.getElementById('qrcode-container');
+            
+            step1.classList.add('hidden');
+            stepQr.classList.remove('hidden');
+            qrContainer.innerHTML = '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>';
+
+            try {
+                const res = await fetch(`${API_URL}/admin/evolution/connect`);
+                const data = await res.json();
+                
+                // Evolution v2 returns 'base64' or 'code' inside data
+                // data might be { base64: "..." } or { qrcode: { base64: "..." } } depending on version
+                
+                let base64 = data.base64 || data.qrcode?.base64 || data.code; // Adjust based on exact response
+                
+                if (base64) {
+                    // Ensure prefix
+                    if (!base64.startsWith('data:image')) {
+                        base64 = 'data:image/png;base64,' + base64;
+                    }
+                    qrContainer.innerHTML = `<img src="${base64}" class="w-64 h-64 object-contain" />`;
+                } else {
+                    qrContainer.innerText = "QR Code não disponível. Tente recarregar.";
+                }
+            } catch(e) {
+                qrContainer.innerText = "Erro ao carregar QR Code.";
+            }
+        }
+
+        // Initialize status check on load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkWhatsappStatus();
+            // ... existing init code ...
+        });
 
         // Global pricing variable
         let PRICING = {

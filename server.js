@@ -649,6 +649,78 @@ app.post('/api/admin/force-notifications', (req, res) => {
     res.json({ message: "Verificação de notificações iniciada em background." });
 });
 
+// --- Evolution API Admin Routes ---
+
+// Check Status
+app.get('/api/admin/evolution/status', async (req, res) => {
+    const apiUrl = process.env.EVOLUTION_API_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+
+    if (!apiUrl || !apiKey) {
+        return res.json({ configured: false, message: "Variáveis de ambiente não configuradas." });
+    }
+
+    try {
+        // Try to fetch instance state
+        const response = await axios.get(`${apiUrl}/instance/connectionState/${instanceName}`, {
+            headers: { 'apikey': apiKey }
+        });
+        res.json({ 
+            configured: true, 
+            instanceName,
+            state: response.data?.instance?.state || 'UNKNOWN',
+            full_response: response.data
+        });
+    } catch (error) {
+        // If 404, instance might not exist
+        if (error.response && error.response.status === 404) {
+             res.json({ configured: true, instanceName, state: 'NOT_FOUND' });
+        } else {
+             res.json({ configured: true, instanceName, state: 'ERROR', error: error.message });
+        }
+    }
+});
+
+// Init Instance
+app.post('/api/admin/evolution/init', async (req, res) => {
+    const apiUrl = process.env.EVOLUTION_API_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+
+    try {
+        // Create Instance
+        const response = await axios.post(`${apiUrl}/instance/create`, {
+            instanceName: instanceName,
+            token: "", // Optional
+            qrcode: true,
+            integration: "WHATSAPP-BAILEYS"
+        }, {
+            headers: { 'apikey': apiKey }
+        });
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response ? error.response.data : error.message });
+    }
+});
+
+// Get Connect/QR Code
+app.get('/api/admin/evolution/connect', async (req, res) => {
+    const apiUrl = process.env.EVOLUTION_API_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+
+    try {
+        const response = await axios.get(`${apiUrl}/instance/connect/${instanceName}`, {
+            headers: { 'apikey': apiKey }
+        });
+        // Evolution v2 returns base64 or code
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response ? error.response.data : error.message });
+    }
+});
+
 // Admin: Update User Role (Promote/Demote)
 app.put('/api/admin/users/:id/role', (req, res) => {
     const adminId = parseInt(req.headers['x-user-id']);
