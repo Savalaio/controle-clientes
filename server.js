@@ -298,7 +298,7 @@ function checkDueDatesAndNotify() {
     // Buscar clientes pendentes que vencem hoje ou na data de aviso
     // E que ainda não foram notificados hoje
     const query = `
-        SELECT c.*, u.payment_pix_key, u.payment_instructions, u.smtp_user, u.smtp_pass
+        SELECT c.*, u.id as owner_id, u.plan as owner_plan, u.role as owner_role, u.payment_pix_key, u.payment_instructions, u.smtp_user, u.smtp_pass
         FROM clients c
         JOIN users u ON c.user_id = u.id
         WHERE c.status = 'Pendente'
@@ -343,13 +343,19 @@ function checkDueDatesAndNotify() {
             }
 
             // 2. Envio por WhatsApp (Integração Evolution API)
-            if (client.phone) {
+            // Apenas para usuários PRO, PREMIUM ou ADMIN
+            const allowedPlans = ['pro', 'premium'];
+            const isAllowed = allowedPlans.includes(client.owner_plan) || client.owner_role === 'admin';
+
+            if (client.phone && isAllowed) {
                 const message = generateWhatsappMessageText(client);
-                console.log(`[Cron] Tentando enviar WhatsApp para ${client.name} (${client.phone})...`);
+                console.log(`[Cron] Tentando enviar WhatsApp para ${client.name} (${client.phone}) via Owner ID ${client.owner_id}...`);
                 
-                sendWhatsappMessage(client.phone, message)
+                sendWhatsappMessage(client.phone, message, client.owner_id)
                     .then(() => console.log(`[Cron] WhatsApp enviado para ${client.name}`))
                     .catch(err => console.error(`[Cron] Erro ao enviar WhatsApp para ${client.name}:`, err.message));
+            } else if (client.phone && !isAllowed) {
+                console.log(`[Cron] WhatsApp pulado para ${client.name} (Plano ${client.owner_plan} não permite automação).`);
             }
 
             // Atualizar last_notification_sent
@@ -451,10 +457,10 @@ function generateWhatsappMessageText(client) {
     return message;
 }
 
-async function sendWhatsappMessage(phone, message) {
+async function sendWhatsappMessage(phone, message, userId = null) {
     const apiUrl = process.env.EVOLUTION_API_URL; // e.g., https://evolution.seudominio.com
     const apiKey = process.env.EVOLUTION_API_KEY; // Global API Key
-    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+    const instanceName = getInstanceName(userId);
 
     if (!apiUrl || !apiKey) {
         throw new Error('Evolution API URL ou Key não configurada no servidor.');
@@ -653,9 +659,10 @@ app.post('/api/admin/force-notifications', (req, res) => {
 
 // Check Status
 app.get('/api/admin/evolution/status', async (req, res) => {
+    const userId = req.headers['x-user-id'];
     const apiUrl = process.env.EVOLUTION_API_URL;
     const apiKey = process.env.EVOLUTION_API_KEY;
-    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+    const instanceName = getInstanceName(userId);
 
     if (!apiUrl || !apiKey) {
         return res.json({ configured: false, message: "Variáveis de ambiente não configuradas." });
@@ -684,9 +691,10 @@ app.get('/api/admin/evolution/status', async (req, res) => {
 
 // Init Instance
 app.post('/api/admin/evolution/init', async (req, res) => {
+    const userId = req.headers['x-user-id'];
     const apiUrl = process.env.EVOLUTION_API_URL;
     const apiKey = process.env.EVOLUTION_API_KEY;
-    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+    const instanceName = getInstanceName(userId);
 
     try {
         // Create Instance
@@ -706,9 +714,10 @@ app.post('/api/admin/evolution/init', async (req, res) => {
 
 // Get Connect/QR Code
 app.get('/api/admin/evolution/connect', async (req, res) => {
+    const userId = req.headers['x-user-id'];
     const apiUrl = process.env.EVOLUTION_API_URL;
     const apiKey = process.env.EVOLUTION_API_KEY;
-    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+    const instanceName = getInstanceName(userId);
 
     try {
         const response = await axios.get(`${apiUrl}/instance/connect/${instanceName}`, {
@@ -723,15 +732,16 @@ app.get('/api/admin/evolution/connect', async (req, res) => {
 
 // Test Send Message
 app.post('/api/admin/evolution/test', async (req, res) => {
+    const userId = req.headers['x-user-id'];
     const { phone } = req.body;
     const apiUrl = process.env.EVOLUTION_API_URL;
     const apiKey = process.env.EVOLUTION_API_KEY;
-    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+    // const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle'; // Removido para usar helper
 
     if (!phone) return res.status(400).json({ error: "Telefone obrigatório" });
 
     try {
-        const result = await sendWhatsappMessage(phone, "Teste de conexão do Sistema Controle com Evolution API! 🚀");
+        const result = await sendWhatsappMessage(phone, "Teste de conexão do Sistema Controle com Evolution API! 🚀", userId);
         res.json({ success: true, result });
     } catch (error) {
         res.status(500).json({ error: error.response ? error.response.data : error.message });
