@@ -3,75 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Criar conta - Meus Clientes</title>
+    <title>Criar Conta - Sistema Controle</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #020617; color: #fff; }
+        body { 
+            background-color: #020617; 
+            color: #fff; 
+            background-image: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%), 
+                              radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
         .login-input {
-            background-color: #020617;
+            background-color: rgba(15, 23, 42, 0.6);
             border: 1px solid #1e293b;
-            transition: border-color 0.3s, box-shadow 0.3s;
+            transition: all 0.3s;
         }
         .login-input:focus {
             border-color: #3b82f6;
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            background-color: rgba(15, 23, 42, 0.9);
             outline: none;
         }
-        @media (max-width: 640px) {
-            .login-container {
-                width: 90%;
-                padding: 1.5rem;
-            }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
     </style>
 </head>
-<body class="h-screen flex items-center justify-center font-sans p-4">
+<body class="min-h-screen flex flex-col font-sans selection:bg-blue-500/30">
 
-    <div class="w-full max-w-sm p-8 bg-gray-900/50 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-sm login-container">
-        <div class="flex items-center justify-center gap-2 mb-8">
-            <i class="fas fa-file-signature text-orange-400 text-2xl"></i>
-            <h1 class="text-2xl font-bold">Criar conta</h1>
+    <!-- Navbar -->
+    <nav class="w-full py-6 px-6 md:px-12 flex justify-between items-center max-w-7xl mx-auto z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i class="fas fa-chart-pie text-white text-xl"></i>
+            </div>
+            <span class="text-xl font-bold tracking-tight text-white">Controle</span>
         </div>
-
-        <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4">
-            <div class="relative">
-                <input type="text" id="name" placeholder="Nome" required 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
-            </div>
-
-            <div class="relative">
-                <input type="email" id="email" placeholder="E-mail" required 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
-            </div>
-
-            <div class="relative">
-                <input type="password" id="password" placeholder="Senha" required 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
-            </div>
-
-            <div class="relative">
-                <input type="text" id="whatsapp" placeholder="WhatsApp" 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
-            </div>
-
-            <div class="relative">
-                <input type="text" id="cpf" placeholder="CPF" 
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
-            </div>
-
-            <button type="submit" 
-                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg shadow-blue-500/20 mt-4 active:scale-95">
-                Criar conta
-            </button>
-        </form>
-
-        <div class="mt-6 text-sm text-center">
-            <div class="text-gray-400">
-                Já tenho conta <span class="text-gray-600">→</span> <a href="login.html" class="text-blue-400 hover:text-blue-300 font-semibold transition">Entrar</a>
-            </div>
+        <div>
+            <a href="login.html" class="hidden md:inline-flex items-center justify-center px-5 py-2 text-sm font-medium text-white transition-colors duration-200 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Fazer Login
+            </a>
         </div>
-    </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex items-center justify-center p-6 relative">
+        <!-- Background Elements -->
+        <div class="absolute top-1/4 left-10 w-72 h-72 bg-blue-600/20 rounded-full blur-[100px] -z-10"></div>
+        <div class="absolute bottom-1/4 right-10 w-96 h-96 bg-purple-600/10 rounded-full blur-[100px] -z-10"></div>
+
+        <div class="max-w-7xl w-full grid lg:grid-cols-2 gap-16 items-center">
+            
+            <!-- Left Column: Value Proposition -->
+            <div class="space-y-8 hidden lg:block">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                    Junte-se a milhares de empreendedores
+                </div>
+
+                <h1 class="text-5xl md:text-6xl font-bold leading-tight tracking-tight">
+                    Comece Sua Jornada <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
+                        Rumo ao Sucesso
+                    </span>
+                </h1>
+                
+                <p class="text-lg text-slate-400 max-w-lg leading-relaxed">
+                    Crie sua conta gratuitamente e experimente a plataforma que está revolucionando a gestão de clientes e cobranças.
+                </p>
+
+                <div class="grid grid-cols-2 gap-6 pt-4">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-green-500/10 rounded-lg text-green-400">
+                            <i class="fas fa-check-circle text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">Sem Cartão</h3>
+                            <p class="text-sm text-slate-500">Comece grátis hoje.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                            <i class="fas fa-rocket text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">Setup Rápido</h3>
+                            <p class="text-sm text-slate-500">Pronto em segundos.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Register Form -->
+            <div class="w-full max-w-md mx-auto lg:ml-auto">
+                <div class="glass-panel p-8 rounded-2xl shadow-2xl relative overflow-hidden">
+                    <!-- Decorator Line -->
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+
+                    <div class="mb-6 text-center lg:text-left">
+                        <h2 class="text-2xl font-bold text-white mb-2">Criar nova conta</h2>
+                        <p class="text-slate-400 text-sm">Preencha os dados abaixo para começar.</p>
+                    </div>
+
+                    <form id="registerForm" class="space-y-4" autocomplete="off">
+                        <!-- Nome -->
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">Nome Completo</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-user text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
+                                </div>
+                                <input type="text" id="name" placeholder="Seu nome" required
+                                    class="w-full login-input rounded-lg py-3 pl-10 pr-4 text-slate-200 placeholder-slate-600 focus:placeholder-slate-500 text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">E-mail</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-envelope text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
+                                </div>
+                                <input type="email" id="email" placeholder="seu@email.com" required
+                                    class="w-full login-input rounded-lg py-3 pl-10 pr-4 text-slate-200 placeholder-slate-600 focus:placeholder-slate-500 text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Password -->
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">Senha</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-lock text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
+                                </div>
+                                <input type="password" id="password" placeholder="••••••••" required
+                                    class="w-full login-input rounded-lg py-3 pl-10 pr-4 text-slate-200 placeholder-slate-600 focus:placeholder-slate-500 text-sm">
+                            </div>
+                        </div>
+
+                        <!-- WhatsApp -->
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">WhatsApp</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fab fa-whatsapp text-slate-500 group-focus-within:text-green-500 transition-colors"></i>
+                                </div>
+                                <input type="text" id="whatsapp" placeholder="(00) 00000-0000"
+                                    class="w-full login-input rounded-lg py-3 pl-10 pr-4 text-slate-200 placeholder-slate-600 focus:placeholder-slate-500 text-sm">
+                            </div>
+                        </div>
+
+                        <!-- CPF -->
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">CPF</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-id-card text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
+                                </div>
+                                <input type="text" id="cpf" placeholder="000.000.000-00"
+                                    class="w-full login-input rounded-lg py-3 pl-10 pr-4 text-slate-200 placeholder-slate-600 focus:placeholder-slate-500 text-sm">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btnRegister"
+                            class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-lg transition duration-200 shadow-lg shadow-blue-500/25 active:scale-[0.98] flex items-center justify-center gap-2 group mt-2">
+                            <span>Criar Conta Grátis</span>
+                            <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        </button>
+                    </form>
+
+                    <div class="mt-6 pt-6 border-t border-slate-700/50">
+                        <div class="text-center text-sm text-slate-400">
+                            Já tem uma conta? 
+                            <a href="login.html" class="text-blue-400 hover:text-blue-300 font-semibold transition ml-1">Fazer Login</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="py-6 text-center text-slate-600 text-xs">
+        <p>&copy; 2026 Sistema Controle. Todos os direitos reservados.</p>
+    </footer>
 
     <script>
         // Check if already logged in
@@ -79,19 +202,26 @@
             window.location.href = 'index.html';
         }
 
-        async function handleRegister(event) {
+        document.getElementById('registerForm').addEventListener('submit', async function(event) {
             event.preventDefault();
+            
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const whatsapp = document.getElementById('whatsapp').value;
             const cpf = document.getElementById('cpf').value;
             
-            const btn = event.target.querySelector('button');
-            const originalText = btn.innerText;
+            const btn = document.getElementById('btnRegister');
+            const originalContent = btn.innerHTML;
+
+            // Simple validation feedback
+            if(!name || !email || !password) {
+                alert("Por favor, preencha os campos obrigatórios.");
+                return;
+            }
 
             btn.disabled = true;
-            btn.innerText = 'Criando...';
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Criando...';
 
             try {
                 const response = await fetch('/api/register', {
@@ -105,18 +235,27 @@
                 if (response.ok) {
                     // Auto login after register
                     localStorage.setItem('user_token', JSON.stringify(data.user));
-                    window.location.href = 'index.html';
+                    
+                    // Show success state briefly
+                    btn.classList.remove('from-blue-600', 'to-indigo-600');
+                    btn.classList.add('bg-green-600');
+                    btn.innerHTML = '<i class="fas fa-check"></i> Sucesso!';
+                    
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
                 } else {
                     alert(data.error || 'Erro ao criar conta');
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
                 }
             } catch (error) {
                 console.error(error);
-                alert('Erro de conexão com o servidor');
-            } finally {
+                alert('Erro de conexão com o servidor. Tente novamente.');
                 btn.disabled = false;
-                btn.innerText = originalText;
+                btn.innerHTML = originalContent;
             }
-        }
+        });
     </script>
 </body>
 </html>

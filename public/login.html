@@ -1,104 +1,413 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Meus Clientes</title>
+    <title>Login - Sistema Controle</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { background-color: #020617; color: #fff; }
+        body { 
+            background-color: #020617; 
+            color: #fff; 
+            background-image: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%), 
+                              radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
         .login-input {
-            background-color: #020617;
+            background-color: rgba(15, 23, 42, 0.6);
             border: 1px solid #1e293b;
-            transition: border-color 0.3s, box-shadow 0.3s;
+            transition: all 0.3s;
         }
         .login-input:focus {
             border-color: #3b82f6;
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            background-color: rgba(15, 23, 42, 0.9);
             outline: none;
         }
-        @media (max-width: 640px) {
-            .login-container {
-                width: 90%;
-                padding: 1.5rem;
-            }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 10px 40px -10px rgba(59, 130, 246, 0.2);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
         }
     </style>
 </head>
-<body class="h-screen flex items-center justify-center font-sans p-4">
+<body class="min-h-screen flex flex-col font-sans selection:bg-blue-500/30 overflow-x-hidden">
 
-    <div class="w-full max-w-sm p-8 bg-gray-900/50 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-sm login-container">
-        <div class="flex items-center gap-2 mb-8">
-            <i class="fas fa-lock text-orange-400 text-2xl"></i>
-            <h1 class="text-2xl font-bold">Login</h1>
+    <!-- Navbar -->
+    <nav class="w-full py-6 px-6 md:px-12 flex justify-between items-center max-w-7xl mx-auto z-50 relative">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i class="fas fa-chart-pie text-white text-xl"></i>
+            </div>
+            <span class="text-xl font-bold tracking-tight text-white">Controle</span>
         </div>
+        <div class="flex items-center gap-6">
+            <a href="#planos" class="hidden md:block text-slate-300 hover:text-white transition text-sm font-medium">Planos</a>
+            <a href="#recursos" class="hidden md:block text-slate-300 hover:text-white transition text-sm font-medium">Recursos</a>
+            <a href="register.html" class="inline-flex items-center justify-center px-5 py-2 text-sm font-medium text-white transition-colors duration-200 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Criar Conta
+            </a>
+        </div>
+    </nav>
 
-        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-6" autocomplete="off">
-            <!-- Dummy inputs to confuse browser autofill -->
-            <input type="text" style="opacity: 0; position: absolute; height: 0; width: 0; z-index: -1;">
-            <input type="password" style="opacity: 0; position: absolute; height: 0; width: 0; z-index: -1;">
+    <!-- Hero Section -->
+    <section class="flex-1 flex items-center justify-center p-6 relative min-h-[90vh]">
+        <!-- Background Elements -->
+        <div class="absolute top-1/4 left-10 w-72 h-72 bg-blue-600/20 rounded-full blur-[100px] -z-10 animate-float"></div>
+        <div class="absolute bottom-1/4 right-10 w-96 h-96 bg-purple-600/10 rounded-full blur-[100px] -z-10 animate-float" style="animation-delay: 2s;"></div>
 
-            <div class="relative">
-                <input type="email" id="email" name="email_field_random_123" placeholder="E-mail" required autocomplete="off" readonly onfocus="this.removeAttribute('readonly');"
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
+        <div class="max-w-7xl w-full grid lg:grid-cols-2 gap-16 items-center">
+            
+            <!-- Left Column: Value Proposition -->
+            <div class="space-y-8 hidden lg:block animate-fade-in-up">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                    Novo: Integração com Evolution API
+                </div>
+
+                <h1 class="text-5xl md:text-6xl font-bold leading-tight tracking-tight">
+                    Gestão Inteligente <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
+                        Para o Seu Negócio
+                    </span>
+                </h1>
+                
+                <p class="text-lg text-slate-400 max-w-lg leading-relaxed">
+                    Automatize cobranças via WhatsApp, gerencie assinaturas e acompanhe seus lucros em tempo real. Tudo em uma única plataforma segura e escalável.
+                </p>
+
+                <div class="grid grid-cols-2 gap-6 pt-4">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-green-500/10 rounded-lg text-green-400">
+                            <i class="fab fa-whatsapp text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">Cobrança Automática</h3>
+                            <p class="text-sm text-slate-500">Envie lembretes sem esforço.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                            <i class="fas fa-qrcode text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">Pix Integrado</h3>
+                            <p class="text-sm text-slate-500">Receba pagamentos na hora.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                            <i class="fas fa-chart-line text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">Dashboard Completo</h3>
+                            <p class="text-sm text-slate-500">Métricas em tempo real.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-orange-500/10 rounded-lg text-orange-400">
+                            <i class="fas fa-shield-alt text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">Segurança Total</h3>
+                            <p class="text-sm text-slate-500">Seus dados protegidos.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="relative">
-                <input type="password" id="password" name="password_field_random_123" placeholder="Senha" required autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');"
-                    class="w-full login-input rounded-lg py-3 px-4 text-gray-300 placeholder-gray-600 focus:placeholder-gray-500">
+            <!-- Right Column: Login Form -->
+            <div class="w-full max-w-md mx-auto lg:ml-auto animate-fade-in-up" style="animation-delay: 0.2s;">
+                <div class="glass-panel p-8 rounded-2xl shadow-2xl relative overflow-hidden">
+                    <!-- Decorator Line -->
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+
+                    <div class="mb-8 text-center lg:text-left">
+                        <h2 class="text-2xl font-bold text-white mb-2">Bem-vindo de volta!</h2>
+                        <p class="text-slate-400 text-sm">Acesse sua conta para gerenciar seus clientes.</p>
+                    </div>
+
+                    <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-5" autocomplete="off">
+                         <!-- Dummy inputs to confuse browser autofill -->
+                        <input type="text" style="opacity: 0; position: absolute; height: 0; width: 0; z-index: -1;">
+                        <input type="password" style="opacity: 0; position: absolute; height: 0; width: 0; z-index: -1;">
+
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">E-mail</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-envelope text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
+                                </div>
+                                <input type="email" id="email" name="email_field_random_123" placeholder="seu@email.com" required autocomplete="off" readonly onfocus="this.removeAttribute('readonly');"
+                                    class="w-full login-input rounded-lg py-3 pl-10 pr-4 text-slate-200 placeholder-slate-600 focus:placeholder-slate-500 text-sm">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center ml-1">
+                                <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Senha</label>
+                                <a href="forgot-password.html" class="text-xs text-blue-400 hover:text-blue-300 transition">Esqueceu?</a>
+                            </div>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-lock text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
+                                </div>
+                                <input type="password" id="password" name="password_field_random_123" placeholder="••••••••" required autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');"
+                                    class="w-full login-input rounded-lg py-3 pl-10 pr-4 text-slate-200 placeholder-slate-600 focus:placeholder-slate-500 text-sm">
+                            </div>
+                        </div>
+
+                        <button type="submit" 
+                            class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-lg transition duration-200 shadow-lg shadow-blue-500/25 active:scale-[0.98] flex items-center justify-center gap-2 group">
+                            <span>Acessar Painel</span>
+                            <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        </button>
+                    </form>
+
+                    <div class="mt-6 pt-6 border-t border-slate-700/50">
+                        <div class="text-center text-sm text-slate-400">
+                            Não tem uma conta? 
+                            <a href="register.html" class="text-blue-400 hover:text-blue-300 font-semibold transition ml-1">Criar conta grátis</a>
+                        </div>
+                        <div class="mt-4">
+                             <button onclick="openHelpModal()" class="w-full text-xs text-slate-500 hover:text-slate-300 transition flex items-center justify-center gap-2">
+                                <i class="fas fa-question-circle"></i> Problemas de acesso ou conta bloqueada?
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <button type="submit" 
-                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg shadow-blue-500/20 active:scale-95">
-                Entrar
-            </button>
-        </form>
-
-        <div class="mt-4">
-            <button onclick="openHelpModal()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-2 rounded-lg transition border border-gray-700 text-sm md:text-base">
-                <i class="fas fa-question-circle mr-2"></i> Problemas de acesso / Bloqueio?
-            </button>
         </div>
+        
+        <!-- Scroll Down Indicator -->
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce hidden lg:block">
+            <a href="#planos" class="text-slate-500 hover:text-white transition">
+                <i class="fas fa-chevron-down text-2xl"></i>
+            </a>
+        </div>
+    </section>
 
-        <div class="mt-6 text-sm text-center">
-            <a href="forgot-password.html" class="block text-blue-400 hover:text-blue-300 mb-2 transition">Esqueci minha senha</a>
-            <div class="text-gray-400">
-                Não tem conta? <a href="register.html" class="text-blue-400 hover:text-blue-300 font-semibold transition">Criar conta</a>
+    <!-- Pricing Section -->
+    <section id="planos" class="py-24 px-6 relative bg-slate-900/50">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Planos que cabem no seu bolso</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">Escolha o plano ideal para o seu momento. Comece grátis e escale conforme seu negócio cresce.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Free Plan -->
+                <div class="glass-card p-8 rounded-2xl relative flex flex-col">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-slate-200">Grátis</h3>
+                        <div class="mt-4 flex items-baseline">
+                            <span class="text-4xl font-extrabold text-white">R$ 0</span>
+                            <span class="text-slate-500 ml-2">/mês</span>
+                        </div>
+                        <p class="mt-4 text-sm text-slate-400">Para quem está começando a organizar seus primeiros clientes.</p>
+                    </div>
+                    <ul class="space-y-4 mb-8 flex-1">
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Até 5 clientes
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Gestão manual
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Dashboard básico
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-slate-500">
+                            <i class="fas fa-times"></i> Automação de WhatsApp
+                        </li>
+                    </ul>
+                    <a href="register.html" class="block w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white text-center font-bold rounded-lg transition">
+                        Começar Grátis
+                    </a>
+                </div>
+
+                <!-- Pro Plan -->
+                <div class="glass-card p-8 rounded-2xl relative flex flex-col border-blue-500/30 transform scale-105 z-10 bg-slate-800/80">
+                    <div class="absolute top-0 right-0 bg-blue-600 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">POPULAR</div>
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-blue-400">Pro</h3>
+                        <div class="mt-4 flex items-baseline">
+                            <span class="text-4xl font-extrabold text-white">R$ 29,90</span>
+                            <span class="text-slate-500 ml-2">/mês</span>
+                        </div>
+                        <p class="mt-4 text-sm text-slate-400">Para profissionais que querem automatizar sua rotina.</p>
+                    </div>
+                    <ul class="space-y-4 mb-8 flex-1">
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Clientes Ilimitados
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Cobrança Automática (Zap)
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Mensagens com IA
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Suporte por Email
+                        </li>
+                    </ul>
+                    <a href="register.html" class="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white text-center font-bold rounded-lg transition shadow-lg shadow-blue-500/25">
+                        Assinar Pro
+                    </a>
+                </div>
+
+                <!-- Premium Plan -->
+                <div class="glass-card p-8 rounded-2xl relative flex flex-col">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-purple-400">Premium</h3>
+                        <div class="mt-4 flex items-baseline">
+                            <span class="text-4xl font-extrabold text-white">R$ 59,90</span>
+                            <span class="text-slate-500 ml-2">/mês</span>
+                        </div>
+                        <p class="mt-4 text-sm text-slate-400">Para agências e empresas que precisam de poder total.</p>
+                    </div>
+                    <ul class="space-y-4 mb-8 flex-1">
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Tudo do Pro
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Múltiplos Usuários
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> API Dedicada
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-slate-300">
+                            <i class="fas fa-check text-green-500"></i> Suporte VIP Prioritário
+                        </li>
+                    </ul>
+                    <a href="register.html" class="block w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white text-center font-bold rounded-lg transition shadow-lg shadow-purple-500/25">
+                        Assinar Premium
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 border-t border-slate-800 bg-slate-950">
+        <div class="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-8">
+            <div class="col-span-1 md:col-span-2">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded flex items-center justify-center">
+                        <i class="fas fa-chart-pie text-white text-sm"></i>
+                    </div>
+                    <span class="text-lg font-bold text-white">Controle</span>
+                </div>
+                <p class="text-slate-500 text-sm max-w-xs">
+                    Simplificando a gestão financeira para pequenos e médios empreendedores em todo o Brasil.
+                </p>
+            </div>
+            
+            <div>
+                <h4 class="font-bold text-white mb-4">Produto</h4>
+                <ul class="space-y-2 text-sm text-slate-400">
+                    <li><a href="#" class="hover:text-blue-400 transition">Recursos</a></li>
+                    <li><a href="#planos" class="hover:text-blue-400 transition">Preços</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition">API</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="font-bold text-white mb-4">Legal</h4>
+                <ul class="space-y-2 text-sm text-slate-400">
+                    <li><a href="#" class="hover:text-blue-400 transition">Termos de Uso</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition">Privacidade</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition">Contato</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-6 mt-12 pt-8 border-t border-slate-900 text-center text-slate-600 text-xs">
+            <p>&copy; 2026 Sistema Controle. Todos os direitos reservados.</p>
+        </div>
+    </footer>
 
     <!-- Help Modal -->
     <div id="helpModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm p-4">
-        <div class="bg-gray-900 border border-gray-700 p-6 md:p-8 rounded-xl w-full max-w-md relative shadow-2xl">
-            <button onclick="closeHelpModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <div class="bg-slate-900 border border-slate-700 p-6 md:p-8 rounded-2xl w-full max-w-md relative shadow-2xl">
+            <button onclick="closeHelpModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
                 <i class="fas fa-times text-xl"></i>
             </button>
             
-            <h2 class="text-2xl font-bold mb-4 text-white flex items-center gap-2">
+            <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
                 <i class="fas fa-life-ring text-blue-500"></i> Central de Ajuda
             </h2>
             
-            <p class="text-gray-300 mb-6">
+            <p class="text-slate-300 mb-6 text-sm leading-relaxed">
                 Se você está com problemas para acessar sua conta ou foi bloqueado, entre em contato com nosso suporte ou tente redefinir sua senha.
             </p>
 
             <div class="space-y-3">
-                <a href="forgot-password.html" class="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-3 rounded-lg font-bold transition">
-                    <i class="fas fa-key mr-2"></i> Redefinir Senha
+                <a href="forgot-password.html" class="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition gap-2">
+                    <i class="fas fa-key"></i> Redefinir Senha
                 </a>
                 
-                <a href="mailto:suporte@controle.com" class="block w-full bg-gray-800 hover:bg-gray-700 text-white text-center py-3 rounded-lg font-bold transition border border-gray-600">
-                    <i class="fas fa-envelope mr-2"></i> Enviar Email
+                <a href="mailto:suporte@controle.com" class="flex items-center justify-center w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-lg font-bold transition border border-slate-600 gap-2">
+                    <i class="fas fa-envelope"></i> Enviar Email
                 </a>
 
-                <a href="https://wa.me/5511999999999" target="_blank" class="block w-full bg-green-600 hover:bg-green-700 text-white text-center py-3 rounded-lg font-bold transition">
-                    <i class="fab fa-whatsapp mr-2"></i> Falar no WhatsApp
+                <a href="https://wa.me/5511999999999" target="_blank" class="flex items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold transition gap-2">
+                    <i class="fab fa-whatsapp"></i> Falar no WhatsApp
                 </a>
             </div>
 
-            <p class="text-xs text-gray-500 mt-6 text-center">
+            <p class="text-xs text-slate-500 mt-6 text-center">
                 Horário de atendimento: Seg-Sex, 9h às 18h.
             </p>
         </div>
@@ -145,10 +454,10 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const btn = event.target.querySelector('button');
-            const originalText = btn.innerText;
+            const originalContent = btn.innerHTML;
 
             btn.disabled = true;
-            btn.innerText = 'Entrando...';
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Entrando...';
 
             try {
                 const response = await fetch('/api/login', {
@@ -175,13 +484,11 @@
                         }
 
                         helpTitle.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500"></i> Acesso Bloqueado';
-                        helpText.innerHTML = `<div class="bg-red-900/30 border border-red-800 p-4 rounded mb-4">
-                            <strong class="text-red-400 block text-lg mb-1">Plano Vencido</strong>
-                            <span class="text-gray-300">${data.error}</span>
+                        helpText.innerHTML = `<div class="bg-red-900/20 border border-red-800/50 p-4 rounded-lg mb-4">
+                            <strong class="text-red-400 block text-base mb-1">Plano Vencido</strong>
+                            <span class="text-slate-300">${data.error}</span>
                         </div>
-                        <div class="text-gray-400 text-sm">
-                            Entre em contato pelo WhatsApp para regularizar sua assinatura e liberar o acesso imediatamente.
-                        </div>`;
+                        <p class="text-slate-400 text-sm">Regularize seu pagamento para liberar o acesso imediatamente.</p>`;
                         
                         openHelpModal();
                     } else {
@@ -193,7 +500,7 @@
                 alert('Erro de conexão com o servidor');
             } finally {
                 btn.disabled = false;
-                btn.innerText = originalText;
+                btn.innerHTML = originalContent;
             }
         }
     </script>
