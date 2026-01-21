@@ -12,9 +12,15 @@ if (!currentUserId) {
 }
 
 // Show Admin Button if admin
-if (currentUser && currentUser.role === 'admin') {
+if (currentUser && (currentUser.role === 'admin' || currentUser.id === 1)) {
     const adminBtn = document.getElementById('adminBtn');
     if (adminBtn) adminBtn.classList.remove('hidden');
+}
+
+// Show WhatsApp Test Button if user is PRO or PREMIUM
+if (currentUser && (currentUser.plan === 'pro' || currentUser.plan === 'premium' || currentUser.role === 'admin')) {
+    const waTestBtn = document.getElementById('whatsappTestBtn');
+    if (waTestBtn) waTestBtn.classList.remove('hidden');
 }
 
 function logout() {
@@ -940,3 +946,69 @@ document.getElementById('searchInput').addEventListener('input', () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(loadClients, 500);
 });
+
+// WhatsApp Test Logic
+function openWhatsappTestModal() {
+    document.getElementById('whatsappTestModal').classList.remove('hidden');
+    document.getElementById('testResult').classList.add('hidden');
+    
+    // Try to fill with user phone
+    try {
+        const token = localStorage.getItem('user_token');
+        if (token) {
+            const user = JSON.parse(token);
+            if (user.whatsapp) {
+                document.getElementById('waTestPhone').value = user.whatsapp;
+            }
+        }
+    } catch(e) {}
+}
+
+function closeWhatsappTestModal() {
+    document.getElementById('whatsappTestModal').classList.add('hidden');
+}
+
+async function sendWhatsappTest() {
+    const phone = document.getElementById('waTestPhone').value;
+    const btn = document.getElementById('btnSendTest');
+    const resultDiv = document.getElementById('testResult');
+    
+    if (!phone) return alert("Digite um número para teste");
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    resultDiv.classList.add('hidden');
+    
+    try {
+        const res = await fetch(`${API_URL}/admin/evolution/test`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-user-id': currentUserId 
+            },
+            body: JSON.stringify({ phone })
+        });
+        
+        const data = await res.json();
+        
+        resultDiv.classList.remove('hidden');
+        if (res.ok) {
+            resultDiv.className = 'p-3 rounded-lg text-sm mt-2 bg-green-900/50 text-green-400 border border-green-800';
+            resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> Mensagem enviada com sucesso! Verifique seu WhatsApp.';
+        } else {
+            resultDiv.className = 'p-3 rounded-lg text-sm mt-2 bg-red-900/50 text-red-400 border border-red-800';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Erro: ${data.error || 'Falha ao enviar'}`;
+        }
+    } catch (e) {
+        resultDiv.classList.remove('hidden');
+        resultDiv.className = 'p-3 rounded-lg text-sm mt-2 bg-red-900/50 text-red-400 border border-red-800';
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Erro de conexão: ${e.message}`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Teste';
+    }
+}
+
+window.openWhatsappTestModal = openWhatsappTestModal;
+window.closeWhatsappTestModal = closeWhatsappTestModal;
+window.sendWhatsappTest = sendWhatsappTest;

@@ -107,6 +107,9 @@
 
             <!-- Quick Actions -->
             <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 flex flex-col gap-4 justify-center">
+                <button id="whatsappTestBtn" onclick="openWhatsappTestModal()" class="hidden bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition w-full">
+                    <i class="fab fa-whatsapp"></i> Testar Conexão WhatsApp
+                </button>
                 <button onclick="openBatchModal()" class="bg-green-700 hover:bg-green-800 px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition w-full">
                     <i class="fas fa-paper-plane"></i> Enviar cobrança em lote
                 </button>
@@ -427,6 +430,33 @@
 
                 <button onclick="savePaymentPrefs()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm w-full mt-2 font-bold transition">Salvar Preferências</button>
                 <div id="paymentSaveMsg" class="text-xs text-gray-400 mt-2 text-center h-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Teste WhatsApp -->
+    <div id="whatsappTestModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fab fa-whatsapp text-green-500"></i> Testar Automação
+                </h2>
+                <button onclick="closeWhatsappTestModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="space-y-4">
+                <p class="text-gray-400 text-sm">Envie uma mensagem de teste para verificar se sua instância do WhatsApp está conectada corretamente.</p>
+                
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Seu Número (com DDD)</label>
+                    <input type="text" id="waTestPhone" placeholder="5511999999999" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-green-500">
+                </div>
+
+                <button onclick="sendWhatsappTest()" id="btnSendTest" class="w-full bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2">
+                    <i class="fas fa-paper-plane"></i> Enviar Teste
+                </button>
+                
+                <div id="testResult" class="hidden p-3 rounded-lg text-sm mt-2"></div>
             </div>
         </div>
     </div>
