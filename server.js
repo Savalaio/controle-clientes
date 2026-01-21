@@ -775,6 +775,27 @@ app.post('/api/admin/evolution/init', async (req, res) => {
     }
 });
 
+// Send Message (Generic via Evolution API)
+app.post('/api/admin/evolution/send', async (req, res) => {
+    const userId = req.headers['x-user-id'];
+    const { phone, message } = req.body;
+    
+    if (!phone || !message) return res.status(400).json({ error: "Telefone e mensagem são obrigatórios" });
+
+    try {
+        const result = await sendWhatsappMessage(phone, message, userId);
+        res.json({ success: true, result });
+    } catch (error) {
+        let errorMessage = error.message;
+        if (error.response && error.response.data) {
+             const data = error.response.data;
+             errorMessage = data.message || data.error || JSON.stringify(data);
+        }
+        // Return 500 but with specific error so frontend can decide to fallback
+        res.status(500).json({ error: errorMessage });
+    }
+});
+
 // Get Connect/QR Code
 app.get('/api/admin/evolution/connect', async (req, res) => {
     const userId = req.headers['x-user-id'];

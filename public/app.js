@@ -921,6 +921,31 @@ async function sendWhatsapp(phone, name, product, value, dueDate, status) {
     try {
         // paidAt is not available in the current batch view call, passing null
         const message = await generateWhatsappMessage(phone, name, product, value, dueDate, status, null);
+        
+        // Tentativa de envio automático (Evolution API)
+        let sentAuto = false;
+        try {
+            const res = await fetch(`${API_URL}/admin/evolution/send`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-user-id': currentUserId 
+                },
+                body: JSON.stringify({ phone, message })
+            });
+            const data = await res.json();
+            
+            if (res.ok && data.success) {
+                alert(`✅ Mensagem enviada automaticamente para ${name}!`);
+                sentAuto = true;
+            }
+        } catch(e) {
+            console.log("Tentativa de envio automático falhou (pode não estar configurado), usando manual.");
+        }
+
+        if (sentAuto) return;
+
+        // Fallback: Manual
         const cleanPhone = phone.replace(/\D/g, '');
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodedMessage}`;
