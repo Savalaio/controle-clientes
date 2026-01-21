@@ -1890,4 +1890,17 @@ app.get('/share-invoice', (req, res) => {
     res.send(html);
 });
 
+function getInstanceName(userId) {
+    // If no userId provided (or system message), use default instance
+    if (!userId) return process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+    
+    // For now, let's use a single instance strategy 'Controle' for the main admin (ID 1)
+    // and 'Controle_{ID}' for others, OR just 'Controle' for everyone if that's the current setup.
+    // Given the previous code, it seems we are moving to multi-tenancy.
+    // However, to avoid breaking existing setup, if userId is 1, use default.
+    if (userId == 1) return process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+    
+    return `Controle_${userId}`;
+}
+
 // Server listening handled by startServer()
