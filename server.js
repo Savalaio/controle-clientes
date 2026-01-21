@@ -546,6 +546,12 @@ async function sendWhatsappMessage(phone, message, userId = null) {
         return response.data;
     } catch (error) {
         console.error('Evolution API Error:', error.response ? error.response.data : error.message);
+        
+        // Improve 404 error message for better user feedback
+        if (error.response && error.response.status === 404) {
+             throw new Error(`Instância '${instanceName}' não encontrada na Evolution API. Verifique se o nome está correto e se a instância foi criada.`);
+        }
+        
         throw error;
     }
 }
