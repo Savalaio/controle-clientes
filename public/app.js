@@ -915,6 +915,22 @@ function sendAiMessage() {
     closeAiModal();
 }
 
+async function sendWhatsapp(phone, name, product, value, dueDate, status) {
+    if (!phone) return alert('Cliente sem telefone!');
+    
+    try {
+        // paidAt is not available in the current batch view call, passing null
+        const message = await generateWhatsappMessage(phone, name, product, value, dueDate, status, null);
+        const cleanPhone = phone.replace(/\D/g, '');
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodedMessage}`;
+        window.open(whatsappUrl, '_blank');
+    } catch (error) {
+        console.error(error);
+        alert('Erro ao gerar mensagem do WhatsApp');
+    }
+}
+
 // Expose functions globally
 window.logout = logout;
 window.openAiModal = openAiModal;
