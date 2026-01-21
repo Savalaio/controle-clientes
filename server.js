@@ -760,7 +760,12 @@ app.post('/api/admin/evolution/init', async (req, res) => {
         });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: error.response ? error.response.data : error.message });
+        let errorMessage = error.message;
+        if (error.response && error.response.data) {
+             const data = error.response.data;
+             errorMessage = data.message || data.error || JSON.stringify(data);
+        }
+        res.status(500).json({ error: errorMessage });
     }
 });
 
@@ -776,7 +781,12 @@ app.get('/api/admin/evolution/connect', async (req, res) => {
         // Evolution v2 returns base64 or code
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: error.response ? error.response.data : error.message });
+        let errorMessage = error.message;
+        if (error.response && error.response.data) {
+             const data = error.response.data;
+             errorMessage = data.message || data.error || JSON.stringify(data);
+        }
+        res.status(500).json({ error: errorMessage });
     }
 });
 
@@ -792,7 +802,13 @@ app.post('/api/admin/evolution/test', async (req, res) => {
         const result = await sendWhatsappMessage(phone, "Teste de conexão do Sistema Controle com Evolution API! 🚀", userId);
         res.json({ success: true, result });
     } catch (error) {
-        res.status(500).json({ error: error.response ? error.response.data : error.message });
+        let errorMessage = error.message;
+        if (error.response && error.response.data) {
+             const data = error.response.data;
+             // Try to find a readable message in the response object
+             errorMessage = data.message || data.error || JSON.stringify(data);
+        }
+        res.status(500).json({ error: errorMessage });
     }
 });
 
