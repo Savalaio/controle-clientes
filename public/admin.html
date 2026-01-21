@@ -345,15 +345,26 @@
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
                 </div>
                 
-                <div id="wa-setup-step-error" class="hidden text-center">
-                    <div class="text-red-500 text-5xl mb-4"><i class="fas fa-exclamation-circle"></i></div>
-                    <h4 class="text-lg font-bold text-white mb-2">Erro de Configuração</h4>
-                    <p class="text-gray-400 text-sm mb-4" id="wa-error-msg">Variáveis de ambiente não encontradas.</p>
-                    <div class="bg-gray-800 p-3 rounded text-left text-xs font-mono text-gray-300 break-all">
-                        EVOLUTION_API_URL=https://evo.realizador.com.br<br>
-                        EVOLUTION_API_KEY=429683C4C977415CAAFCCE10F7D57E11<br>
-                        EVOLUTION_INSTANCE_NAME=Controle
+                <div id="wa-setup-step-config" class="hidden text-left">
+                    <h4 class="text-lg font-bold text-white mb-4 text-center">Configurar Evolution API</h4>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-400 text-xs mb-1">API URL (Ex: https://evo.seu-dominio.com)</label>
+                        <input type="text" id="evo-api-url" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm focus:border-green-500 outline-none" placeholder="https://api.exemplo.com">
                     </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-400 text-xs mb-1">API Global Key</label>
+                        <input type="text" id="evo-api-key" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm focus:border-green-500 outline-none" placeholder="Sua Global API Key">
+                    </div>
+
+                    <button onclick="saveEvolutionSettings()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded transition font-medium">
+                        Salvar e Conectar
+                    </button>
+                    
+                    <p class="text-xs text-gray-500 mt-4 text-center">
+                        Isso salvará as credenciais no banco de dados para uso do sistema.
+                    </p>
                 </div>
 
                 <div id="wa-setup-step-qrcode" class="hidden text-center">
@@ -433,34 +444,70 @@
             }
         }
 
+        async function saveEvolutionSettings() {
+            const url = document.getElementById('evo-api-url').value;
+            const key = document.getElementById('evo-api-key').value;
+            
+            if (!url || !key) return alert("Preencha todos os campos");
+            
+            try {
+                const userToken = localStorage.getItem('user_token');
+                const currentUser = userToken ? JSON.parse(userToken) : null;
+                
+                const res = await fetch(`${API_URL}/admin/settings`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-user-id': currentUser ? currentUser.id : '' 
+                    },
+                    body: JSON.stringify({
+                        evolution_api_url: url,
+                        evolution_api_key: key
+                    })
+                });
+                
+                if (res.ok) {
+                    alert("Configurações salvas! Tentando conectar...");
+                    checkWhatsappStatus(true);
+                } else {
+                    alert("Erro ao atualizar configurações.");
+                }
+            } catch(e) {
+                alert("Erro de conexão.");
+            }
+        }
+
         async function checkWhatsappStatus(isModalOpen = false) {
             const statusEl = document.getElementById('whatsapp-status');
             const step1 = document.getElementById('wa-setup-step-1');
-            const stepError = document.getElementById('wa-setup-step-error');
+            const stepConfig = document.getElementById('wa-setup-step-config');
             const stepQr = document.getElementById('wa-setup-step-qrcode');
             const stepSuccess = document.getElementById('wa-setup-step-success');
             const qrContainer = document.getElementById('qrcode-container');
-            const errorMsg = document.getElementById('wa-error-msg');
             const instanceNameEl = document.getElementById('wa-instance-name');
 
             if(isModalOpen) {
                 step1.classList.remove('hidden');
-                stepError.classList.add('hidden');
+                stepConfig.classList.add('hidden');
                 stepQr.classList.add('hidden');
                 stepSuccess.classList.add('hidden');
             }
 
             try {
-                const res = await fetch(`${API_URL}/admin/evolution/status`);
+                const userToken = localStorage.getItem('user_token');
+                const currentUser = userToken ? JSON.parse(userToken) : null;
+                const headers = { 
+                    'x-user-id': currentUser ? currentUser.id : '' 
+                };
+
+                const res = await fetch(`${API_URL}/admin/evolution/status`, { headers });
                 const data = await res.json();
 
                 if (!data.configured) {
-                    statusEl.innerText = "Não Configurado";
-                    statusEl.className = "text-lg font-bold text-red-500 mt-1";
+                    statusEl.innerHTML = '<span class="text-gray-400"><i class="fas fa-cog"></i> Não configurado</span>';
                     if(isModalOpen) {
                         step1.classList.add('hidden');
-                        stepError.classList.remove('hidden');
-                        errorMsg.innerText = data.message || "Variáveis de ambiente ausentes.";
+                        stepConfig.classList.remove('hidden');
                     }
                     return;
                 }
@@ -494,15 +541,26 @@
                 statusEl.innerText = "Erro";
                 if(isModalOpen) {
                     step1.classList.add('hidden');
-                    stepError.classList.remove('hidden');
-                    errorMsg.innerText = "Erro de conexão com o servidor.";
+                    // Fallback to config if error is connection related? 
+                    // Or just show config
+                    stepConfig.classList.remove('hidden');
                 }
             }
         }
 
         async function createInstance() {
             try {
-                const res = await fetch(`${API_URL}/admin/evolution/init`, { method: 'POST' });
+                const userToken = localStorage.getItem('user_token');
+                const currentUser = userToken ? JSON.parse(userToken) : null;
+                const headers = { 
+                    'x-user-id': currentUser ? currentUser.id : '',
+                    'Content-Type': 'application/json'
+                };
+
+                const res = await fetch(`${API_URL}/admin/evolution/init`, { 
+                    method: 'POST',
+                    headers: headers
+                });
                 const data = await res.json();
                 if (data.instance || data.qrcode) {
                     loadQrCode();
@@ -524,7 +582,13 @@
             qrContainer.innerHTML = '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>';
 
             try {
-                const res = await fetch(`${API_URL}/admin/evolution/connect`);
+                const userToken = localStorage.getItem('user_token');
+                const currentUser = userToken ? JSON.parse(userToken) : null;
+                const headers = { 
+                    'x-user-id': currentUser ? currentUser.id : '' 
+                };
+
+                const res = await fetch(`${API_URL}/admin/evolution/connect`, { headers });
                 const data = await res.json();
                 
                 // Evolution v2 returns 'base64' or 'code' inside data
@@ -583,6 +647,14 @@
                 // Update PIX Key
                 if (stats.pix_key) {
                     document.getElementById('pix-key').value = stats.pix_key;
+                }
+
+                // Update Evolution Config Inputs
+                if (stats.evolution_api_url) {
+                    document.getElementById('evo-api-url').value = stats.evolution_api_url;
+                }
+                if (stats.evolution_api_key) {
+                    document.getElementById('evo-api-key').value = stats.evolution_api_key;
                 }
 
                 // Update Counts

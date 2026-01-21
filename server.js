@@ -293,20 +293,25 @@ function checkDueDatesAndNotify() {
     warningDate.setDate(today.getDate() + 3);
     const warningDateStr = warningDate.toISOString().split('T')[0];
 
-    console.log(`[Cron] Verificando vencimentos para hoje (${todayStr}) e prévia (${warningDateStr})`);
+    // Calcular ontem (para cobrir falhas de cron/servidor offline)
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    // Buscar clientes pendentes que vencem hoje ou na data de aviso
+    console.log(`[Cron] Verificando vencimentos para: Ontem (${yesterdayStr}), Hoje (${todayStr}) e Prévia (${warningDateStr})`);
+
+    // Buscar clientes pendentes que vencem hoje, ontem (recuperação) ou na data de aviso
     // E que ainda não foram notificados hoje
     const query = `
         SELECT c.*, u.id as owner_id, u.plan as owner_plan, u.role as owner_role, u.payment_pix_key, u.payment_instructions, u.smtp_user, u.smtp_pass
         FROM clients c
         JOIN users u ON c.user_id = u.id
         WHERE c.status = 'Pendente'
-        AND (c.due_date = ? OR c.due_date = ?)
+        AND (c.due_date = ? OR c.due_date = ? OR c.due_date = ?)
         AND (c.last_notification_sent IS NULL OR c.last_notification_sent != ?)
     `;
 
-    db.all(query, [todayStr, warningDateStr, todayStr], (err, clients) => {
+    db.all(query, [todayStr, yesterdayStr, warningDateStr, todayStr], (err, clients) => {
         if (err) {
             console.error('[Cron] Erro ao buscar clientes:', err);
             return;
@@ -420,6 +425,59 @@ function formatPhoneForEvolution(phone) {
     return clean;
 }
 
+function getInstanceName(userId) {
+    // If no userId provided (or system message), use default instance
+    if (!userId) return process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+    
+    // For now, let's use a single instance strategy 'Controle' for the main admin (ID 1)
+    // and 'Controle_{ID}' for others, OR just 'Controle' for everyone if that's the current setup.
+    // Given the previous code, it seems we are moving to multi-tenancy.
+    // However, to avoid breaking existing setup, if userId is 1, use default.
+    if (userId == 1) return process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
+    
+    return `Controle_${userId}`;
+}
+
+async function getEvolutionCredentials(userId) {
+    // 1. Try Environment Variables (Global Override)
+    let url = process.env.EVOLUTION_API_URL;
+    let key = process.env.EVOLUTION_API_KEY;
+
+    // If env vars are set, use them (priority)
+    if (url && key) {
+        return { url, key, instanceName: getInstanceName(userId) };
+    }
+
+    // 2. Try Database (Admin Settings)
+    // We check settings for the specific user (if they are an admin/reseller) or Master Admin (ID 1)
+    // For now, let's fallback to Master Admin settings if user specific not found?
+    // Actually, each user should configure their own if they want to use their own instance.
+    // But for the main system, we check the user's settings.
+    
+    const targetUserId = userId || 1; // Default to Master Admin if no user specified
+
+    return new Promise((resolve, reject) => {
+        db.all("SELECT key, value FROM settings WHERE user_id = ?", [targetUserId], (err, rows) => {
+            if (err) {
+                console.error("Error fetching settings:", err);
+                return resolve({ url: null, key: null, instanceName: getInstanceName(userId) });
+            }
+            
+            if (rows) {
+                rows.forEach(row => {
+                    if (row.key === 'evolution_api_url') url = row.value;
+                    if (row.key === 'evolution_api_key') key = row.value;
+                });
+            }
+            
+            // If still not found and userId != 1, maybe check Master Admin? 
+            // (Optional: for now, assume each admin configures their own or uses Env vars)
+            
+            resolve({ url, key, instanceName: getInstanceName(userId) });
+        });
+    });
+}
+
 function generateWhatsappMessageText(client) {
     // Simplified text generator for server-side
     // Reuse logic similar to frontend but without DOM dependency
@@ -458,9 +516,7 @@ function generateWhatsappMessageText(client) {
 }
 
 async function sendWhatsappMessage(phone, message, userId = null) {
-    const apiUrl = process.env.EVOLUTION_API_URL; // e.g., https://evolution.seudominio.com
-    const apiKey = process.env.EVOLUTION_API_KEY; // Global API Key
-    const instanceName = getInstanceName(userId);
+    const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
     if (!apiUrl || !apiKey) {
         throw new Error('Evolution API URL ou Key não configurada no servidor.');
@@ -660,9 +716,7 @@ app.post('/api/admin/force-notifications', (req, res) => {
 // Check Status
 app.get('/api/admin/evolution/status', async (req, res) => {
     const userId = req.headers['x-user-id'];
-    const apiUrl = process.env.EVOLUTION_API_URL;
-    const apiKey = process.env.EVOLUTION_API_KEY;
-    const instanceName = getInstanceName(userId);
+    const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
     if (!apiUrl || !apiKey) {
         return res.json({ configured: false, message: "Variáveis de ambiente não configuradas." });
@@ -692,9 +746,7 @@ app.get('/api/admin/evolution/status', async (req, res) => {
 // Init Instance
 app.post('/api/admin/evolution/init', async (req, res) => {
     const userId = req.headers['x-user-id'];
-    const apiUrl = process.env.EVOLUTION_API_URL;
-    const apiKey = process.env.EVOLUTION_API_KEY;
-    const instanceName = getInstanceName(userId);
+    const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
     try {
         // Create Instance
@@ -715,9 +767,7 @@ app.post('/api/admin/evolution/init', async (req, res) => {
 // Get Connect/QR Code
 app.get('/api/admin/evolution/connect', async (req, res) => {
     const userId = req.headers['x-user-id'];
-    const apiUrl = process.env.EVOLUTION_API_URL;
-    const apiKey = process.env.EVOLUTION_API_KEY;
-    const instanceName = getInstanceName(userId);
+    const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
     try {
         const response = await axios.get(`${apiUrl}/instance/connect/${instanceName}`, {
@@ -734,10 +784,8 @@ app.get('/api/admin/evolution/connect', async (req, res) => {
 app.post('/api/admin/evolution/test', async (req, res) => {
     const userId = req.headers['x-user-id'];
     const { phone } = req.body;
-    const apiUrl = process.env.EVOLUTION_API_URL;
-    const apiKey = process.env.EVOLUTION_API_KEY;
-    // const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'Controle'; // Removido para usar helper
-
+    // Helper handles credentials lookup
+    
     if (!phone) return res.status(400).json({ error: "Telefone obrigatório" });
 
     try {
@@ -1043,6 +1091,8 @@ app.get('/api/admin/stats', (req, res) => {
                 if (s.key === 'price_pro') stats.prices.pro = parseFloat(s.value);
                 if (s.key === 'price_premium') stats.prices.premium = parseFloat(s.value);
                 if (s.key === 'pix_key') stats.pix_key = s.value;
+                if (s.key === 'evolution_api_url') stats.evolution_api_url = s.value;
+                if (s.key === 'evolution_api_key') stats.evolution_api_key = s.value;
             });
         }
 
@@ -1094,7 +1144,7 @@ app.put('/api/admin/settings', (req, res) => {
     console.log(`[DEBUG] PUT /api/admin/settings - AdminID: ${adminId}`);
     if (!adminId) return res.status(401).json({ error: "Unauthorized" });
 
-    const { prices, pix_key } = req.body;
+    const { prices, pix_key, evolution_api_url, evolution_api_key } = req.body;
     
     const stmt = db.prepare("INSERT OR REPLACE INTO settings (user_id, key, value) VALUES (?, ?, ?)");
     
@@ -1106,6 +1156,14 @@ app.put('/api/admin/settings', (req, res) => {
     
     if (pix_key !== undefined) {
         stmt.run(adminId, 'pix_key', pix_key);
+    }
+    
+    if (evolution_api_url !== undefined) {
+        stmt.run(adminId, 'evolution_api_url', evolution_api_url);
+    }
+    
+    if (evolution_api_key !== undefined) {
+        stmt.run(adminId, 'evolution_api_key', evolution_api_key);
     }
     
     stmt.finalize();
@@ -1889,18 +1947,5 @@ app.get('/share-invoice', (req, res) => {
     `;
     res.send(html);
 });
-
-function getInstanceName(userId) {
-    // If no userId provided (or system message), use default instance
-    if (!userId) return process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
-    
-    // For now, let's use a single instance strategy 'Controle' for the main admin (ID 1)
-    // and 'Controle_{ID}' for others, OR just 'Controle' for everyone if that's the current setup.
-    // Given the previous code, it seems we are moving to multi-tenancy.
-    // However, to avoid breaking existing setup, if userId is 1, use default.
-    if (userId == 1) return process.env.EVOLUTION_INSTANCE_NAME || 'Controle';
-    
-    return `Controle_${userId}`;
-}
 
 // Server listening handled by startServer()
