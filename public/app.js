@@ -17,10 +17,13 @@ if (currentUser && (currentUser.role === 'admin' || currentUser.id === 1)) {
     if (adminBtn) adminBtn.classList.remove('hidden');
 }
 
-// Show WhatsApp Test Button if user is PRO or PREMIUM
+// Show WhatsApp Test Button and Connect Button if user is PRO or PREMIUM
 if (currentUser && (currentUser.plan === 'pro' || currentUser.plan === 'premium' || currentUser.role === 'admin')) {
     const waTestBtn = document.getElementById('whatsappTestBtn');
     if (waTestBtn) waTestBtn.classList.remove('hidden');
+    
+    const waConnectBtn = document.getElementById('whatsappConnectBtn');
+    if (waConnectBtn) waConnectBtn.classList.remove('hidden');
 }
 
 function logout() {
@@ -994,32 +997,27 @@ function openWhatsappTestModal() {
     document.getElementById('testResult').classList.add('hidden');
     
     // Try to fill with user phone
-    try {
-        const token = localStorage.getItem('user_token');
-        if (token) {
-            const user = JSON.parse(token);
-            if (user.whatsapp) {
-                document.getElementById('waTestPhone').value = user.whatsapp;
-            }
-        }
-    } catch(e) {}
+    const user = JSON.parse(localStorage.getItem('user_token') || '{}');
+    if (user.whatsapp) {
+        document.getElementById('testPhone').value = user.whatsapp;
+    }
 }
 
 function closeWhatsappTestModal() {
     document.getElementById('whatsappTestModal').classList.add('hidden');
 }
 
-async function sendWhatsappTest() {
-    const phone = document.getElementById('waTestPhone').value;
-    const btn = document.getElementById('btnSendTest');
+async function sendTestWhatsapp() {
+    const phone = document.getElementById('testPhone').value;
+    const btn = event.target; // Get button
     const resultDiv = document.getElementById('testResult');
     
-    if (!phone) return alert("Digite um número para teste");
-    
+    if (!phone) return alert('Digite um telefone');
+
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
     resultDiv.classList.add('hidden');
-    
+
     try {
         const res = await fetch(`${API_URL}/admin/evolution/test`, {
             method: 'POST',
@@ -1033,23 +1031,167 @@ async function sendWhatsappTest() {
         const data = await res.json();
         
         resultDiv.classList.remove('hidden');
-        if (res.ok) {
-            resultDiv.className = 'p-3 rounded-lg text-sm mt-2 bg-green-900/50 text-green-400 border border-green-800';
-            resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> Mensagem enviada com sucesso! Verifique seu WhatsApp.';
+        if (res.ok && data.success) {
+            resultDiv.className = 'mt-4 p-3 rounded bg-green-500/20 text-green-300 text-sm';
+            resultDiv.innerHTML = '✅ Mensagem enviada com sucesso! Verifique seu WhatsApp.';
         } else {
-            resultDiv.className = 'p-3 rounded-lg text-sm mt-2 bg-red-900/50 text-red-400 border border-red-800';
-            resultDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Erro: ${data.error || 'Falha ao enviar'}`;
+            resultDiv.className = 'mt-4 p-3 rounded bg-red-500/20 text-red-300 text-sm';
+            resultDiv.innerHTML = `❌ Erro: ${data.error || 'Falha desconhecida'}`;
         }
-    } catch (e) {
+    } catch (error) {
         resultDiv.classList.remove('hidden');
-        resultDiv.className = 'p-3 rounded-lg text-sm mt-2 bg-red-900/50 text-red-400 border border-red-800';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Erro de conexão: ${e.message}`;
+        resultDiv.className = 'mt-4 p-3 rounded bg-red-500/20 text-red-300 text-sm';
+        resultDiv.innerHTML = `❌ Erro de conexão: ${error.message}`;
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Teste';
+        btn.innerHTML = 'Enviar Teste';
     }
 }
 
+// --- WhatsApp Configuration Modal Logic ---
+
+let waStatusInterval = null;
+
+function openWhatsappConfigModal() {
+    document.getElementById('whatsappConfigModal').classList.remove('hidden');
+    checkWhatsappStatus();
+}
+
+async function checkWhatsappStatus(isManualCheck = false) {
+    const step1 = document.getElementById('wa-setup-step-1');
+    const stepCreate = document.getElementById('wa-setup-step-create');
+    const stepQr = document.getElementById('wa-setup-step-qrcode');
+    const stepSuccess = document.getElementById('wa-setup-step-success');
+
+    // Show loading initially only if not polling silently
+    if (!waStatusInterval) {
+        step1.classList.remove('hidden');
+        stepCreate.classList.add('hidden');
+        stepQr.classList.add('hidden');
+        stepSuccess.classList.add('hidden');
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/admin/evolution/status`, {
+            headers: { 'x-user-id': currentUserId }
+        });
+        const data = await res.json();
+
+        // Hide loader
+        step1.classList.add('hidden');
+
+        if (data.state === 'open') {
+            stepSuccess.classList.remove('hidden');
+            stepQr.classList.add('hidden');
+            stepCreate.classList.add('hidden');
+            if (waStatusInterval) clearInterval(waStatusInterval);
+        } else if (data.state === 'NOT_FOUND') {
+            stepCreate.classList.remove('hidden');
+            stepQr.classList.add('hidden');
+            stepSuccess.classList.add('hidden');
+        } else {
+            // connecting, close, or unknown -> Show QR Code logic
+            stepQr.classList.remove('hidden');
+            stepCreate.classList.add('hidden');
+            stepSuccess.classList.add('hidden');
+            loadWhatsappQRCode();
+        }
+
+        if (isManualCheck) {
+           if(data.state === 'open') {
+                alert('Conectado com sucesso!');
+           } else {
+                alert('Ainda não conectado. Verifique se escaneou corretamente. Estado atual: ' + data.state);
+           }
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Erro ao verificar status do WhatsApp.');
+        document.getElementById('whatsappConfigModal').classList.add('hidden');
+    }
+}
+
+async function initWhatsappInstance() {
+    const btn = event.target; 
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_URL}/admin/evolution/init`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-user-id': currentUserId 
+            }
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert('Instância criada! Carregando QR Code...');
+            checkWhatsappStatus(); // Refresh to show QR code step
+        } else {
+            alert('Erro ao criar instância: ' + (data.error || 'Erro desconhecido'));
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Erro de conexão ao criar instância.');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function loadWhatsappQRCode() {
+    const qrContainer = document.getElementById('qrcode-container');
+    qrContainer.innerHTML = '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>';
+
+    try {
+        const res = await fetch(`${API_URL}/admin/evolution/connect`, {
+            headers: { 'x-user-id': currentUserId }
+        });
+        const data = await res.json();
+
+        if (data.base64) {
+            qrContainer.innerHTML = `<img src="${data.base64}" alt="QR Code" class="max-w-full h-auto rounded-lg border border-gray-200">`;
+        } else if (data.code) {
+             qrContainer.innerHTML = `<div class="p-4 bg-white text-black break-all font-mono text-sm">${data.code}</div><p class="text-xs text-gray-500 mt-2">Copie o código acima se não for imagem</p>`;
+        } else {
+            qrContainer.innerHTML = '<p class="text-red-500">QR Code indisponível no momento. Tente recarregar.</p>';
+        }
+    } catch (error) {
+        console.error(error);
+        qrContainer.innerHTML = '<p class="text-red-500">Erro ao carregar QR Code.</p>';
+    }
+}
+
+// Expose functions globally
+window.logout = logout;
+window.openAiModal = openAiModal;
+window.closeAiModal = closeAiModal;
+window.generateAiMessage = generateAiMessage;
+window.sendAiMessage = sendAiMessage;
+window.openWhatsappModal = openWhatsappModal;
+window.closeWhatsappModal = closeWhatsappModal;
+window.sendWhatsappFromModal = sendWhatsappFromModal;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.openEditModal = openEditModal;
+window.openBatchModal = openBatchModal;
+window.closeBatchModal = closeBatchModal;
+window.handleFormSubmit = handleFormSubmit;
+window.sendWhatsapp = sendWhatsapp;
+window.sendEmail = sendEmail;
+window.markAsPaid = markAsPaid;
+window.deleteClient = deleteClient;
+window.uploadLogo = uploadLogo;
+window.savePaymentPrefs = savePaymentPrefs;
+window.searchClients = searchClients;
+window.filterStatus = filterStatus;
+window.exportCSV = exportCSV;
 window.openWhatsappTestModal = openWhatsappTestModal;
-window.closeWhatsappTestModal = closeWhatsappTestModal;
-window.sendWhatsappTest = sendWhatsappTest;
+window.sendTestWhatsapp = sendTestWhatsapp;
+window.openWhatsappConfigModal = openWhatsappConfigModal;
+window.checkWhatsappStatus = checkWhatsappStatus;
+window.initWhatsappInstance = initWhatsappInstance;
