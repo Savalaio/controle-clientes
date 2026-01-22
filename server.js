@@ -547,9 +547,24 @@ async function sendWhatsappMessage(phone, message, userId = null) {
     } catch (error) {
         console.error('Evolution API Error:', error.response ? error.response.data : error.message);
         
-        // Improve 404 error message for better user feedback
+        // Auto-Heal: If instance not found (404), try to create it automatically
         if (error.response && error.response.status === 404) {
-             throw new Error(`Instância '${instanceName}' não encontrada na Evolution API. Verifique se o nome está correto e se a instância foi criada.`);
+             console.log(`[Auto-Heal] Instância '${instanceName}' não encontrada. Tentando criar automaticamente...`);
+             try {
+                 await axios.post(`${apiUrl}/instance/create`, {
+                    instanceName: instanceName,
+                    token: "",
+                    qrcode: true,
+                    integration: "WHATSAPP-BAILEYS"
+                 }, {
+                    headers: { 'apikey': apiKey }
+                 });
+                 console.log(`[Auto-Heal] Instância '${instanceName}' criada com sucesso!`);
+                 throw new Error(`A instância WhatsApp '${instanceName}' foi criada automaticamente. Por favor, clique em "Conectar WhatsApp" no painel para escanear o QR Code.`);
+             } catch (createErr) {
+                 console.error(`[Auto-Heal] Falha ao criar instância: ${createErr.message}`);
+                 throw new Error(`Instância '${instanceName}' não encontrada na Evolution API e não foi possível criá-la automaticamente.`);
+             }
         }
         
         throw error;
