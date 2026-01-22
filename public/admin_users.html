@@ -186,6 +186,36 @@
         </div>
     </div>
 
+    <!-- Modal for Editing User -->
+    <div id="editUserModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700">
+            <h2 class="text-xl font-bold mb-4">Editar Usuário</h2>
+            <input type="hidden" id="editUserId">
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Nome</label>
+                    <input type="text" id="editUserName" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Email</label>
+                    <input type="email" id="editUserEmail" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">WhatsApp</label>
+                    <input type="text" id="editUserWhatsapp" placeholder="Ex: 5511999999999" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">CPF</label>
+                    <input type="text" id="editUserCpf" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-2 focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="saveUserDetails()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded transition">Salvar</button>
+                <button onclick="closeEditUserModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded transition">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal for Plan Change -->
     <div id="planModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-gray-800 rounded-xl p-6 max-w-sm w-full border border-gray-700">
@@ -547,6 +577,9 @@
                     <td class="p-4" data-label="Clientes">${user.client_count || 0}</td>
                     <td class="p-4 font-bold ${statusColor}" data-label="Status">${statusText}</td>
                     <td class="p-4 flex items-center gap-2" data-label="Ações">
+                        <button onclick="openEditUserModal(${user.id})" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs flex items-center gap-1 border border-blue-800 transition shadow-lg shadow-blue-900/50" title="Editar Dados">
+                            <i class="fas fa-pen"></i>
+                        </button>
                         <button onclick="sendCharge(${user.id})" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs flex items-center gap-1 border border-green-800 transition shadow-lg shadow-green-900/50" title="Cobrar no WhatsApp">
                             <i class="fab fa-whatsapp text-sm"></i>
                         </button>
@@ -959,6 +992,57 @@
             const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodedMessage}`;
             window.open(whatsappUrl, '_blank');
             closeAdminAiModal();
+        }
+
+        // Edit User Logic
+        function openEditUserModal(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUserName').value = user.name || '';
+            document.getElementById('editUserEmail').value = user.email || '';
+            document.getElementById('editUserWhatsapp').value = user.whatsapp || '';
+            document.getElementById('editUserCpf').value = user.cpf || '';
+            
+            document.getElementById('editUserModal').classList.remove('hidden');
+        }
+
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').classList.add('hidden');
+        }
+
+        async function saveUserDetails() {
+            const userId = document.getElementById('editUserId').value;
+            const name = document.getElementById('editUserName').value;
+            const email = document.getElementById('editUserEmail').value;
+            const whatsapp = document.getElementById('editUserWhatsapp').value;
+            const cpf = document.getElementById('editUserCpf').value;
+
+            if (!name || !email) {
+                alert('Nome e Email são obrigatórios.');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/admin/users/${userId}`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ name, email, whatsapp, cpf })
+                });
+
+                if (res.ok) {
+                    alert('Usuário atualizado com sucesso!');
+                    closeEditUserModal();
+                    loadUsers();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Erro ao atualizar usuário.');
+                }
+            } catch (error) {
+                console.error('Error updating user:', error);
+                alert('Erro de conexão.');
+            }
         }
     </script>
 </body>

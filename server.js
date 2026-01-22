@@ -913,10 +913,11 @@ app.post('/api/admin/users', (req, res) => {
     // Hash password
     try {
         const hashedPassword = bcrypt.hashSync(password, 8);
+        const createdAt = new Date().toISOString();
         
         // Use adminId as owner_id
-        db.run(`INSERT INTO users (name, email, password, whatsapp, cpf, owner_id) VALUES (?, ?, ?, ?, ?, ?)`, 
-            [name, email, hashedPassword, whatsapp, cpf, adminId], 
+        db.run(`INSERT INTO users (name, email, password, whatsapp, cpf, owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, 
+            [name, email, hashedPassword, whatsapp, cpf, adminId, createdAt], 
             function(err) {
                 if (err) {
                     if (err.message.includes("UNIQUE constraint failed")) {
@@ -930,6 +931,41 @@ app.post('/api/admin/users', (req, res) => {
     } catch (e) {
         return res.status(500).json({ error: "Erro ao criptografar senha: " + e.message });
     }
+});
+
+// Admin: Update User Details (Name, Email, WhatsApp, CPF)
+app.put('/api/admin/users/:id', (req, res) => {
+    const adminId = parseInt(req.headers['x-user-id']);
+    const { id } = req.params;
+    const { name, email, whatsapp, cpf } = req.body;
+
+    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+
+    // Check permissions
+    db.get("SELECT * FROM users WHERE id = ?", [adminId], (err, requester) => {
+        if (err || !requester) return res.status(401).json({ error: "Unauthorized" });
+
+        const isMaster = requester.id === 1 || requester.email === 'realizadorsonho@gmail.com';
+
+        db.get("SELECT owner_id FROM users WHERE id = ?", [id], (err, targetUser) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!targetUser) return res.status(404).json({ error: "User not found" });
+
+            if (!isMaster && targetUser.owner_id != adminId) {
+                return res.status(403).json({ error: "Permission denied" });
+            }
+
+            // Update
+            db.run(
+                "UPDATE users SET name = ?, email = ?, whatsapp = ?, cpf = ? WHERE id = ?", 
+                [name, email, whatsapp, cpf, id], 
+                function(err) {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.json({ message: "success", changes: this.changes });
+                }
+            );
+        });
+    });
 });
 
 // Admin: Delete User (Master Only)
