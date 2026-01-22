@@ -1573,6 +1573,88 @@ app.post('/api/ai/generate-message', (req, res) => {
     });
 });
 
+// AI Smart Entry Route (Parse Client Data)
+app.post('/api/ai/parse-client', async (req, res) => {
+    const userId = req.headers['x-user-id'];
+    const { text } = req.body;
+    
+    if (!text) return res.status(400).json({ error: "Texto obrigatório" });
+
+    // Use user's key if available, else system key
+    let apiKey = process.env.GEMINI_API_KEY;
+    if (userId) {
+        const userSettings = await new Promise((resolve) => {
+             db.all("SELECT key, value FROM settings WHERE user_id = ?", [userId], (err, rows) => {
+                 if (err || !rows) resolve({});
+                 const settings = {};
+                 rows.forEach(r => settings[r.key] = r.value);
+                 resolve(settings);
+             });
+        });
+        if (userSettings.gemini_api_key) apiKey = userSettings.gemini_api_key;
+    }
+
+    if (!apiKey) {
+        return res.status(500).json({ error: "Chave da API Gemini não configurada." });
+    }
+
+    const { GoogleGenerativeAI } = require("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // Fallback strategy same as message generation
+    const modelsToTry = [
+        { model: "gemini-2.0-flash", config: { responseMimeType: "application/json" } },
+        { model: "gemini-2.0-flash-lite", config: { responseMimeType: "application/json" } },
+        { model: "gemini-1.5-flash", config: { responseMimeType: "application/json" } },
+        { model: "gemini-pro", config: {} } // Pro v1 often doesn't support json mode natively well, might need text parsing
+    ];
+
+    let lastError = null;
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const dayOfWeek = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][today.getDay()];
+
+    for (const option of modelsToTry) {
+        try {
+            const modelName = option.model;
+            const model = genAI.getGenerativeModel({ 
+                model: modelName,
+                ...option.config
+            });
+
+            const prompt = `
+            Hoje é ${todayStr} (${dayOfWeek}).
+            Analise o texto abaixo e extraia os dados de um cliente para agendamento de cobrança.
+            Retorne APENAS um JSON válido com os seguintes campos (use null se não encontrar):
+            - name (string)
+            - phone (string, apenas números com DDD 55, ex: 5511999999999)
+            - value (number, exemplo: 50.00)
+            - due_date (string, formato YYYY-MM-DD). Calcule a data baseada em "próxima terça", "dia 15", "amanhã", etc.
+            - product (string, descrição do serviço/produto)
+
+            Texto: "${text}"
+            `;
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            let textResponse = response.text();
+            
+            // Clean markdown code blocks if present (common in non-JSON mode models)
+            textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+
+            const json = JSON.parse(textResponse);
+            return res.json(json);
+
+        } catch (error) {
+            console.warn(`Falha no parse com modelo ${option.model}:`, error.message);
+            lastError = error;
+        }
+    }
+
+    res.status(500).json({ error: "Falha ao processar texto com IA." });
+});
+
 // Upload Logo Route
 
 // Get all clients

@@ -959,7 +959,68 @@ async function sendWhatsapp(phone, name, product, value, dueDate, status) {
     }
 }
 
+// AI Smart Entry Logic
+function openSmartEntryModal() {
+    document.getElementById('aiSmartEntryModal').classList.remove('hidden');
+    document.getElementById('aiSmartInput').focus();
+}
+
+async function processSmartEntry() {
+    const text = document.getElementById('aiSmartInput').value;
+    if (!text) return alert('Digite algo para a IA processar.');
+    
+    const loading = document.getElementById('aiLoading');
+    loading.classList.remove('hidden');
+    
+    try {
+        const res = await fetch(`${API_URL}/ai/parse-client`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'x-user-id': currentUserId 
+            },
+            body: JSON.stringify({ text })
+        });
+        
+        const data = await res.json();
+        loading.classList.add('hidden');
+        
+        if (res.ok) {
+            document.getElementById('aiSmartEntryModal').classList.add('hidden');
+            document.getElementById('aiSmartInput').value = ''; // Clear input
+            
+            // Open main modal (this usually resets the form)
+            openModal();
+            
+            // Populate form
+            setTimeout(() => {
+                const form = document.getElementById('clientForm');
+                if (data.name) form.name.value = data.name;
+                if (data.phone) form.phone.value = data.phone;
+                if (data.value) form.value.value = data.value;
+                if (data.due_date) form.due_date.value = data.due_date;
+                if (data.product) form.product.value = data.product;
+                
+                // Highlight filled fields
+                if (data.name) form.name.classList.add('border-purple-500');
+                if (data.phone) form.phone.classList.add('border-purple-500');
+                if (data.value) form.value.classList.add('border-purple-500');
+                
+            }, 100);
+            
+        } else {
+            alert('Erro ao processar: ' + (data.error || 'Erro desconhecido'));
+        }
+    } catch (e) {
+        loading.classList.add('hidden');
+        alert('Erro de conexão com a IA.');
+        console.error(e);
+    }
+}
+
 // Expose functions globally
+window.openSmartEntryModal = openSmartEntryModal;
+window.processSmartEntry = processSmartEntry;
 window.logout = logout;
 window.openAiModal = openAiModal;
 window.closeAiModal = closeAiModal;
