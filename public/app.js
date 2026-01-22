@@ -1019,15 +1019,21 @@ async function sendTestWhatsapp() {
     resultDiv.classList.add('hidden');
 
     try {
+        // Timeout de segurança no frontend (30s)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
         const res = await fetch(`${API_URL}/admin/evolution/test`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'x-user-id': currentUserId 
             },
-            body: JSON.stringify({ phone })
+            body: JSON.stringify({ phone }),
+            signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
         const data = await res.json();
         
         resultDiv.classList.remove('hidden');
@@ -1041,7 +1047,12 @@ async function sendTestWhatsapp() {
     } catch (error) {
         resultDiv.classList.remove('hidden');
         resultDiv.className = 'mt-4 p-3 rounded bg-red-500/20 text-red-300 text-sm';
-        resultDiv.innerHTML = `❌ Erro de conexão: ${error.message}`;
+        
+        if (error.name === 'AbortError') {
+             resultDiv.innerHTML = `❌ Erro: Tempo limite excedido. O servidor demorou muito para responder. Tente novamente.`;
+        } else {
+             resultDiv.innerHTML = `❌ Erro de conexão: ${error.message}`;
+        }
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Enviar Teste';

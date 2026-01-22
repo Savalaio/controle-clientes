@@ -540,7 +540,8 @@ async function sendWhatsappMessage(phone, message, userId = null) {
             headers: {
                 'apikey': apiKey,
                 'Content-Type': 'application/json'
-            }
+            },
+            timeout: 15000 // 15s timeout
         });
         
         return response.data;
@@ -557,13 +558,18 @@ async function sendWhatsappMessage(phone, message, userId = null) {
                     qrcode: true,
                     integration: "WHATSAPP-BAILEYS"
                  }, {
-                    headers: { 'apikey': apiKey }
+                    headers: { 'apikey': apiKey },
+                    timeout: 20000 // 20s timeout for creation
                  });
                  console.log(`[Auto-Heal] Instância '${instanceName}' criada com sucesso!`);
                  throw new Error(`A instância WhatsApp '${instanceName}' foi criada automaticamente. Por favor, clique em "Conectar WhatsApp" no painel para escanear o QR Code.`);
              } catch (createErr) {
                  console.error(`[Auto-Heal] Falha ao criar instância: ${createErr.message}`);
-                 throw new Error(`Instância '${instanceName}' não encontrada na Evolution API e não foi possível criá-la automaticamente.`);
+                 // Se o erro for o que nós mesmos lançamos (sucesso na criação), relança ele
+                 if (createErr.message.includes('criada automaticamente')) {
+                     throw createErr;
+                 }
+                 throw new Error(`Instância '${instanceName}' não encontrada e falha ao criar: ${createErr.message}`);
              }
         }
         
