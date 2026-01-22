@@ -256,7 +256,7 @@
                 div.innerHTML = `
                     <div class="max-w-[80%] p-3 rounded-lg ${isMe ? 'bg-blue-900/50 text-blue-100 rounded-tr-none' : 'bg-gray-700 text-gray-200 rounded-tl-none'}">
                         <div class="text-xs opacity-50 mb-1 flex justify-between gap-4">
-                            <span>${msg.sender_name}</span>
+                            <span>${msg.sender_name || 'Desconhecido'}</span>
                             <span>${new Date(msg.created_at).toLocaleString()}</span>
                         </div>
                         <p>${msg.message}</p>

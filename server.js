@@ -969,7 +969,7 @@ app.get('/api/tickets/stats', (req, res) => {
 // Get all tickets (Admin) or User tickets
 app.get('/api/tickets', (req, res) => {
     const userId = req.query.userId;
-    let sql = `SELECT t.*, u.name as user_name FROM tickets t JOIN users u ON t.user_id = u.id`;
+    let sql = `SELECT t.*, u.name as user_name FROM tickets t LEFT JOIN users u ON t.user_id = u.id`;
     let params = [];
 
     if (userId) {
@@ -2094,4 +2094,5 @@ app.get('/share-invoice', (req, res) => {
     res.send(html);
 });
 
+// Server listening handled by startServer()
 // Server listening handled by startServer()
