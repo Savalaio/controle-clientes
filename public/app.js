@@ -1023,10 +1023,13 @@ window.processSmartEntry = processSmartEntry;
 
 // Debounce search
 let searchTimeout;
-document.getElementById('searchInput').addEventListener('input', () => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(loadClients, 500);
-});
+const searchInput = document.getElementById('searchInput');
+if (searchInput) {
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadClients, 500);
+    });
+}
 
 // WhatsApp Test Logic
 function openWhatsappTestModal() {
