@@ -529,12 +529,18 @@
             </div>
             <div class="p-6">
                 <p class="text-gray-300 text-sm mb-4">
-                    Cole uma conversa do WhatsApp ou descreva o agendamento. A IA preencherá o formulário para você.
+                    Cole uma conversa do WhatsApp ou descreva o agendamento. A IA extrairá os dados para <strong>preencher o cadastro</strong>.
                 </p>
                 <div class="mb-4">
                     <textarea id="aiSmartInput" rows="5" class="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition resize-none placeholder-gray-600" placeholder="Ex: Agendar cobrança do João Silva 50 reais para próxima terça feira referente a manutenção"></textarea>
                 </div>
                 
+                <!-- Optional Phone Input for Clarity -->
+                <div class="mb-4">
+                    <label class="block text-gray-400 text-xs mb-1">Telefone do Cliente (Opcional - se não estiver no texto)</label>
+                    <input type="text" id="aiSmartPhone" placeholder="Ex: 11999999999" class="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-purple-500 transition">
+                </div>
+
                 <div id="aiLoading" class="hidden text-center py-4">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-2"></div>
                     <p class="text-purple-400 text-xs animate-pulse">A IA está lendo e extraindo os dados...</p>

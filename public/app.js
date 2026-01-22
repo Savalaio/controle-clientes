@@ -967,7 +967,9 @@ function openSmartEntryModal() {
 
 async function processSmartEntry() {
     const text = document.getElementById('aiSmartInput').value;
-    if (!text) return alert('Digite algo para a IA processar.');
+    const manualPhone = document.getElementById('aiSmartPhone').value; // Get manual phone
+
+    if (!text && !manualPhone) return alert('Digite algo ou informe o telefone para a IA processar.');
     
     const loading = document.getElementById('aiLoading');
     loading.classList.remove('hidden');
@@ -979,7 +981,7 @@ async function processSmartEntry() {
                 'Content-Type': 'application/json', 
                 'x-user-id': currentUserId 
             },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text, manualPhone }) // Send manualPhone too
         });
         
         const data = await res.json();
@@ -987,7 +989,8 @@ async function processSmartEntry() {
         
         if (res.ok) {
             document.getElementById('aiSmartEntryModal').classList.add('hidden');
-            document.getElementById('aiSmartInput').value = ''; // Clear input
+            document.getElementById('aiSmartInput').value = ''; 
+            document.getElementById('aiSmartPhone').value = ''; // Clear phone
             
             // Open main modal (this usually resets the form)
             openModal();
@@ -996,14 +999,24 @@ async function processSmartEntry() {
             setTimeout(() => {
                 const form = document.getElementById('clientForm');
                 if (data.name) form.name.value = data.name;
-                if (data.phone) form.phone.value = data.phone;
+                
+                // Prioritize manual phone if returned, or AI extracted
+                // The backend should handle merging, but let's assume backend might not support manualPhone yet.
+                // We can just override here if manualPhone was provided and backend returned it (or if we trust the input)
+                if (manualPhone) {
+                    form.phone.value = manualPhone;
+                    form.phone.classList.add('border-purple-500');
+                } else if (data.phone) {
+                    form.phone.value = data.phone;
+                    form.phone.classList.add('border-purple-500');
+                }
+
                 if (data.value) form.value.value = data.value;
                 if (data.due_date) form.due_date.value = data.due_date;
                 if (data.product) form.product.value = data.product;
                 
                 // Highlight filled fields
                 if (data.name) form.name.classList.add('border-purple-500');
-                if (data.phone) form.phone.classList.add('border-purple-500');
                 if (data.value) form.value.classList.add('border-purple-500');
                 
             }, 100);
