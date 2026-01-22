@@ -1,5 +1,5 @@
 const express = require('express');
-console.log("--- INICIANDO VERSAO CORRIGIDA V4 (Bcrypt Fix) ---");
+console.log("--- INICIANDO VERSAO V5 (WhatsApp Fix + Modal) ---");
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
