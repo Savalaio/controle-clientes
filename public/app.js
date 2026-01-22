@@ -1018,32 +1018,8 @@ async function processSmartEntry() {
     }
 }
 
-// Expose functions globally
 window.openSmartEntryModal = openSmartEntryModal;
 window.processSmartEntry = processSmartEntry;
-window.logout = logout;
-window.openAiModal = openAiModal;
-window.closeAiModal = closeAiModal;
-window.generateAiMessage = generateAiMessage;
-window.sendAiMessage = sendAiMessage;
-window.openWhatsappModal = openWhatsappModal;
-window.closeWhatsappModal = closeWhatsappModal;
-window.sendWhatsappFromModal = sendWhatsappFromModal;
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.openEditModal = openEditModal;
-window.openBatchModal = openBatchModal;
-window.closeBatchModal = closeBatchModal;
-window.handleFormSubmit = handleFormSubmit;
-window.sendWhatsapp = sendWhatsapp;
-window.sendEmail = sendEmail;
-window.markAsPaid = markAsPaid;
-window.deleteClient = deleteClient;
-window.uploadLogo = uploadLogo;
-window.savePaymentPrefs = savePaymentPrefs;
-window.searchClients = searchClients;
-window.filterStatus = filterStatus;
-window.exportCSV = exportCSV;
 
 // Debounce search
 let searchTimeout;
