@@ -771,6 +771,8 @@ app.post('/api/admin/force-notifications', (req, res) => {
 // Check Status
 app.get('/api/admin/evolution/status', async (req, res) => {
     const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ error: "Unauthorized: User ID required" });
+
     const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
     if (!apiUrl || !apiKey) {
@@ -801,6 +803,8 @@ app.get('/api/admin/evolution/status', async (req, res) => {
 // Init Instance
 app.post('/api/admin/evolution/init', async (req, res) => {
     const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ error: "Unauthorized: User ID required" });
+
     const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
     try {
@@ -848,6 +852,8 @@ app.post('/api/admin/evolution/send', async (req, res) => {
 // Get Connect/QR Code
 app.get('/api/admin/evolution/connect', async (req, res) => {
     const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ error: "Unauthorized: User ID required" });
+
     const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
     try {
