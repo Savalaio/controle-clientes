@@ -293,25 +293,30 @@ function checkDueDatesAndNotify() {
     warningDate.setDate(today.getDate() + 3);
     const warningDateStr = warningDate.toISOString().split('T')[0];
 
-    // Calcular ontem (para cobrir falhas de cron/servidor offline)
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    // Calcular janela de atraso (ex: últimos 7 dias) para garantir que ninguém seja esquecido
+    // Isso substitui a lógica de apenas "ontem" e cobre falhas de execução do servidor
+    const pastLimit = new Date(today);
+    pastLimit.setDate(today.getDate() - 7);
+    const pastLimitStr = pastLimit.toISOString().split('T')[0];
 
-    console.log(`[Cron] Verificando vencimentos para: Ontem (${yesterdayStr}), Hoje (${todayStr}) e Prévia (${warningDateStr})`);
+    console.log(`[Cron] Verificando vencimentos entre ${pastLimitStr} e ${todayStr}, e prévia para ${warningDateStr}`);
 
-    // Buscar clientes pendentes que vencem hoje, ontem (recuperação) ou na data de aviso
+    // Buscar clientes pendentes que vencem hoje ou nos últimos 7 dias (atrasados), ou na data de aviso futuro
     // E que ainda não foram notificados hoje
     const query = `
         SELECT c.*, u.id as owner_id, u.plan as owner_plan, u.role as owner_role, u.payment_pix_key, u.payment_instructions, u.smtp_user, u.smtp_pass
         FROM clients c
         JOIN users u ON c.user_id = u.id
         WHERE c.status = 'Pendente'
-        AND (c.due_date = ? OR c.due_date = ? OR c.due_date = ?)
+        AND (
+            (c.due_date >= ? AND c.due_date <= ?) -- Janela de Vencimento/Atraso (Hoje + 7 dias passados)
+            OR 
+            c.due_date = ? -- Aviso Prévio
+        )
         AND (c.last_notification_sent IS NULL OR c.last_notification_sent != ?)
     `;
 
-    db.all(query, [todayStr, yesterdayStr, warningDateStr, todayStr], (err, clients) => {
+    db.all(query, [pastLimitStr, todayStr, warningDateStr, todayStr], (err, clients) => {
         if (err) {
             console.error('[Cron] Erro ao buscar clientes:', err);
             return;
