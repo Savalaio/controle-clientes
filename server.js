@@ -462,23 +462,46 @@ async function getEvolutionCredentials(userId) {
     const targetUserId = userId || 1; // Default to Master Admin if no user specified
 
     return new Promise((resolve, reject) => {
+        // First try to find settings for the specific user
         db.all("SELECT key, value FROM settings WHERE user_id = ?", [targetUserId], (err, rows) => {
             if (err) {
                 console.error("Error fetching settings:", err);
                 return resolve({ url: null, key: null, instanceName: getInstanceName(userId) });
             }
             
+            let foundUrl = null;
+            let foundKey = null;
+
             if (rows) {
                 rows.forEach(row => {
-                    if (row.key === 'evolution_api_url') url = row.value;
-                    if (row.key === 'evolution_api_key') key = row.value;
+                    if (row.key === 'evolution_api_url') foundUrl = row.value;
+                    if (row.key === 'evolution_api_key') foundKey = row.value;
                 });
             }
-            
-            // If still not found and userId != 1, maybe check Master Admin? 
-            // (Optional: for now, assume each admin configures their own or uses Env vars)
-            
-            resolve({ url, key, instanceName: getInstanceName(userId) });
+
+            // If found, return them
+            if (foundUrl && foundKey) {
+                return resolve({ url: foundUrl, key: foundKey, instanceName: getInstanceName(userId) });
+            }
+
+            // If not found and we were looking for a specific user (not Master), try Master as fallback
+            if (targetUserId !== 1) {
+                db.all("SELECT key, value FROM settings WHERE user_id = 1", (err2, rows2) => {
+                    if (err2) {
+                        return resolve({ url: null, key: null, instanceName: getInstanceName(userId) });
+                    }
+                    
+                    if (rows2) {
+                        rows2.forEach(row => {
+                            if (row.key === 'evolution_api_url') foundUrl = row.value;
+                            if (row.key === 'evolution_api_key') foundKey = row.value;
+                        });
+                    }
+                    resolve({ url: foundUrl, key: foundKey, instanceName: getInstanceName(userId) });
+                });
+            } else {
+                resolve({ url: foundUrl, key: foundKey, instanceName: getInstanceName(userId) });
+            }
         });
     });
 }
