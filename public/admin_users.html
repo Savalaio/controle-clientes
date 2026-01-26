@@ -72,7 +72,7 @@
         <!-- Sidebar -->
         <div class="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-800 p-4 md:p-6 flex flex-row md:flex-col gap-4 md:gap-6 justify-between items-center md:items-stretch bg-[#020617] z-10">
             <div class="text-xl font-bold text-blue-500 flex items-center gap-2">
-                <i class="fas fa-tools"></i> <span class="md:inline hidden">Admin</span>
+                <i class="fas fa-tools"></i> <span class="md:inline hidden">Painel Admin</span>
             </div>
             
             <nav class="flex md:flex-col gap-2 md:space-y-2 overflow-x-auto md:overflow-visible w-full md:w-auto">
@@ -83,7 +83,7 @@
                     <i class="fas fa-headset w-5 md:w-6"></i> <span class="md:inline hidden">Suporte</span> <span id="support-badge" class="hidden bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-auto"></span>
                 </a>
                 <a href="admin.html" class="block text-gray-400 hover:text-white px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap">
-                    <i class="fas fa-chart-line w-5 md:w-6"></i> <span class="md:inline hidden">Dashboard</span>
+                    <i class="fas fa-chart-line w-5 md:w-6"></i> <span class="md:inline hidden">Painel</span>
                 </a>
                 <a href="index.html" class="block text-purple-400 hover:text-purple-300 px-3 py-2 md:px-4 md:py-2 flex items-center gap-2 whitespace-nowrap">
                     <i class="fas fa-user w-5 md:w-6"></i> <span class="md:inline hidden">Área Usuário</span>
@@ -131,7 +131,7 @@
                             <th class="p-4" title="Data de registro da conta no sistema">Data Registro <i class="fas fa-info-circle text-xs text-gray-500 ml-1"></i></th>
                             <th class="p-4" title="Data de vencimento do plano (configurada pelo admin)">Vencimento <i class="fas fa-info-circle text-xs text-gray-500 ml-1"></i></th>
                             <th class="p-4">Plano</th>
-                            <th class="p-4">Role</th>
+                            <th class="p-4">Permissão</th>
                             <th class="p-4">Pagamento</th>
                             <th class="p-4">Clientes</th>
                             <th class="p-4">Status</th>
@@ -223,7 +223,7 @@
             <input type="hidden" id="modalUserId">
             <div class="space-y-2 mb-6">
                 <button onclick="savePlan('free')" class="w-full p-3 bg-gray-700 hover:bg-gray-600 rounded text-left flex justify-between">
-                    <span>FREE</span>
+                    <span>GRÁTIS</span>
                     <i class="fas fa-check text-green-500 hidden" id="check-free"></i>
                 </button>
                 <button onclick="savePlan('pro')" class="w-full p-3 bg-gray-700 hover:bg-gray-600 rounded text-left flex justify-between">
@@ -566,7 +566,7 @@
                     <td class="p-4 text-gray-400" data-label="Registro">${createdAt}</td>
                     <td class="p-4 text-gray-400 ${payText === 'VENCIDO' ? 'text-red-400 font-bold' : ''}" data-label="Vencimento">${dueDateDisplay}</td>
                     <td class="p-4 font-bold uppercase ${planColor}" data-label="Plano">${user.plan}</td>
-                    <td class="p-4" data-label="Role">
+                    <td class="p-4" data-label="Permissão">
                         <span class="px-2 py-1 rounded text-xs font-semibold transition ${user.role === 'admin' ? 'bg-purple-900 text-purple-300' : 'bg-gray-700 text-gray-300'}">
                             ${(user.role || 'user').toUpperCase()}
                         </span>
@@ -763,7 +763,7 @@
 
             const planPrice = pricing[user.plan] || 0;
             if (planPrice === 0 && user.plan === 'free') {
-                alert('Usuários do plano Free não precisam ser cobrados.');
+                alert('Usuários do plano Grátis não precisam ser cobrados.');
                 return;
             }
 
@@ -926,7 +926,7 @@
             
             const planPrice = pricing[currentAiUser.plan] || 0;
             if (currentAiUser.plan === 'free' && planPrice === 0) {
-                alert('Usuários do plano Free não precisam ser cobrados com mensagem de IA.');
+                alert('Usuários do plano Grátis não precisam ser cobrados com mensagem de IA.');
                 return;
             }
 

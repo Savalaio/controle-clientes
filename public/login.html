@@ -267,7 +267,7 @@
                             <i class="fas fa-check text-green-500"></i> Gestão manual
                         </li>
                         <li class="flex items-center gap-3 text-sm text-slate-300">
-                            <i class="fas fa-check text-green-500"></i> Dashboard básico
+                            <i class="fas fa-check text-green-500"></i> Painel básico
                         </li>
                         <li class="flex items-center gap-3 text-sm text-slate-500">
                             <i class="fas fa-times"></i> Automação de WhatsApp
@@ -442,17 +442,101 @@
             }, 200);
         });
 
+        let blockedUserId = null;
+        let paymentCheckInterval = null;
+        const API_URL = '/api';
+
         function openHelpModal() {
             document.getElementById('helpModal').classList.remove('hidden');
         }
 
         function closeHelpModal() {
             document.getElementById('helpModal').classList.add('hidden');
+            if (paymentCheckInterval) clearInterval(paymentCheckInterval);
         }
 
         // Check if already logged in
         if (localStorage.getItem('user_token')) {
             window.location.href = 'index.html';
+        }
+
+        async function startPixPayment() {
+            if (!blockedUserId) return alert("Erro: Usuário não identificado.");
+            
+            const btn = document.getElementById('btnPayPix');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando Pix...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/pay/pix`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: blockedUserId })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    const container = document.getElementById('paymentContainer');
+                    if(container) {
+                        container.classList.remove('hidden');
+                        document.getElementById('qrCodeWrapper').innerHTML = `<img src="data:image/png;base64,${data.qr_code_base64}" class="w-40 h-40 mx-auto rounded-lg">`;
+                        document.getElementById('pixCopyPaste').value = data.qr_code;
+                    }
+                    
+                    const defaultBtns = document.getElementById('defaultButtons');
+                    if(defaultBtns) defaultBtns.classList.add('hidden');
+                    
+                    startPaymentPolling();
+                } else {
+                    alert("Erro ao gerar Pix: " + (data.error || "Tente novamente."));
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Erro de conexão ao gerar Pix.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function copyPixCode() {
+            const input = document.getElementById('pixCopyPaste');
+            input.select();
+            document.execCommand('copy');
+            alert("Código Pix copiado!");
+        }
+
+        function startPaymentPolling() {
+            if (paymentCheckInterval) clearInterval(paymentCheckInterval);
+            
+            paymentCheckInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`${API_URL}/pay/check/${blockedUserId}`);
+                    const data = await res.json();
+                    
+                    if (data.is_paid) {
+                        clearInterval(paymentCheckInterval);
+                        const modalDiv = document.querySelector('#helpModal > div');
+                        modalDiv.innerHTML = `
+                            <button onclick="window.location.reload()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                            <div class="text-center py-8">
+                                <i class="fas fa-check-circle text-green-500 text-6xl mb-6"></i>
+                                <h2 class="text-2xl font-bold text-white mb-2">Pagamento Confirmado!</h2>
+                                <p class="text-slate-400 mb-8">Seu acesso foi liberado com sucesso.</p>
+                                <button onclick="window.location.reload()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-blue-500/20 transition hover:scale-105">
+                                    Entrar Agora
+                                </button>
+                            </div>
+                        `;
+                    }
+                } catch (e) {
+                    console.error("Polling error", e);
+                }
+            }, 5000);
         }
 
         async function handleLogin(event) {
@@ -466,7 +550,7 @@
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Entrando...';
 
             try {
-                const response = await fetch('/api/login', {
+                const response = await fetch(`${API_URL}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -479,22 +563,45 @@
                     window.location.href = 'index.html';
                 } else {
                     if (data.is_overdue) {
-                        // Custom behavior for overdue users
-                        const helpTitle = document.querySelector('#helpModal h2');
-                        const helpText = document.querySelector('#helpModal p');
+                        blockedUserId = data.user_id || (data.user ? data.user.id : null);
+                        const helpModalDiv = document.querySelector('#helpModal > div');
                         
-                        // Save original content to restore later if needed
-                        if (!helpTitle.getAttribute('data-original')) {
-                            helpTitle.setAttribute('data-original', helpTitle.innerHTML);
-                            helpText.setAttribute('data-original', helpText.innerHTML);
-                        }
+                        helpModalDiv.innerHTML = `
+                            <button onclick="closeHelpModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                            
+                            <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                                <i class="fas fa-exclamation-triangle text-red-500"></i> Acesso Bloqueado
+                            </h2>
 
-                        helpTitle.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500"></i> Acesso Bloqueado';
-                        helpText.innerHTML = `<div class="bg-red-900/20 border border-red-800/50 p-4 rounded-lg mb-4">
-                            <strong class="text-red-400 block text-base mb-1">Plano Vencido</strong>
-                            <span class="text-slate-300">${data.error}</span>
-                        </div>
-                        <p class="text-slate-400 text-sm">Regularize seu pagamento para liberar o acesso imediatamente.</p>`;
+                            <div class="bg-red-900/20 border border-red-800/50 p-4 rounded-lg mb-6">
+                                <strong class="text-red-400 block text-base mb-1">Plano Vencido</strong>
+                                <span class="text-slate-300 text-sm">${data.error}</span>
+                            </div>
+                            
+                            <div id="paymentContainer" class="hidden mb-6 bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                <div id="qrCodeWrapper" class="flex justify-center mb-4 bg-white p-2 rounded w-fit mx-auto"></div>
+                                <div class="flex gap-2">
+                                    <input id="pixCopyPaste" readonly class="flex-1 bg-slate-900 border border-slate-700 rounded px-3 text-sm text-slate-300 focus:outline-none">
+                                    <button onclick="copyPixCode()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded transition">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <p class="text-center text-xs text-slate-500 mt-2">Aguardando pagamento...</p>
+                            </div>
+
+                            <button id="btnPayPix" onclick="startPixPayment()" class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-green-900/20 mb-4 flex items-center justify-center gap-2 transform transition active:scale-95">
+                                <i class="fas fa-qrcode"></i> Pagar com Pix
+                            </button>
+
+                            <div class="space-y-3" id="defaultButtons">
+                                <p class="text-slate-500 text-xs text-center mb-2">Ou entre em contato:</p>
+                                <a href="https://wa.me/5511999999999" target="_blank" class="flex items-center justify-center w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-lg font-bold transition text-sm gap-2">
+                                    <i class="fab fa-whatsapp"></i> Suporte WhatsApp
+                                </a>
+                            </div>
+                        `;
                         
                         openHelpModal();
                     } else {

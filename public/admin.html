@@ -35,12 +35,12 @@
         <!-- Sidebar -->
         <div class="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-800 p-4 md:p-6 flex flex-row md:flex-col gap-4 md:gap-6 justify-between items-center md:items-stretch bg-[#020617] z-10">
             <div class="text-xl font-bold text-blue-500 flex items-center gap-2">
-                <i class="fas fa-shield-alt"></i> <span class="md:inline hidden">Admin Panel</span>
+                <i class="fas fa-shield-alt"></i> <span class="md:inline hidden">Painel Admin</span>
             </div>
             
             <nav class="flex md:flex-col gap-2 md:space-y-2 overflow-x-auto md:overflow-visible w-full md:w-auto">
                 <a href="admin.html" class="block text-white bg-blue-900/20 border border-blue-900/50 rounded px-3 py-2 md:px-4 md:py-3 flex items-center gap-3 transition whitespace-nowrap">
-                    <i class="fas fa-chart-pie w-5 md:w-6"></i> <span class="md:inline hidden">Dashboard</span>
+                    <i class="fas fa-chart-pie w-5 md:w-6"></i> <span class="md:inline hidden">Painel</span>
                 </a>
                 <a href="admin_users.html" class="block text-gray-400 hover:text-white hover:bg-gray-800/50 rounded px-3 py-2 md:px-4 md:py-3 flex items-center gap-3 transition whitespace-nowrap">
                     <i class="fas fa-users-cog w-5 md:w-6"></i> <span class="md:inline hidden">Gerenciar Usuários</span>
@@ -229,7 +229,7 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                            <label class="block text-gray-400 text-sm mb-2">Plano FREE</label>
+                            <label class="block text-gray-400 text-sm mb-2">Plano GRÁTIS</label>
                             <div class="relative">
                                 <span class="absolute left-3 top-2 text-gray-500">R$</span>
                                 <input type="number" id="price-free" step="0.01" class="w-full bg-gray-800 border border-gray-600 rounded p-2 pl-8 text-white focus:outline-none focus:border-blue-500">
@@ -259,6 +259,29 @@
                     </div>
                     <p class="text-xs text-gray-500 mt-2">Esta chave será usada nas mensagens de cobrança enviadas pelo WhatsApp.</p>
                 </div>
+
+                <div class="mt-6 bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                    <label class="block text-gray-400 text-sm mb-2">Provedor de Pagamento Ativo</label>
+                    <select id="active-provider" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-blue-500">
+                        <option value="mercadopago">Mercado Pago</option>
+                        <option value="pagbank">PagBank (PagSeguro)</option>
+                    </select>
+                </div>
+
+                <div class="mt-6 bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                    <label class="block text-gray-400 text-sm mb-2">Mercado Pago Access Token</label>
+                    <input type="text" id="mp-token" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-blue-500" placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                </div>
+
+                <div class="mt-6 bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                    <label class="block text-gray-400 text-sm mb-2">PagBank Token (Sandbox/Produção)</label>
+                    <input type="text" id="pagbank-token" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-blue-500" placeholder="Token do PagBank">
+                    <p class="text-xs text-gray-500 mt-1">Necessário para gerar QR Code Pix automático via PagBank.</p>
+                </div>
+
+                <button onclick="savePrices()" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full transition shadow-lg shadow-blue-900/50">
+                    Salvar Configurações
+                </button>
             </div>
 
                 <!-- Recent Users Table -->
@@ -657,6 +680,17 @@
                     document.getElementById('evo-api-key').value = stats.evolution_api_key;
                 }
 
+                // Update Payment Config
+                if (stats.mercado_pago_access_token) {
+                    document.getElementById('mp-token').value = stats.mercado_pago_access_token;
+                }
+                if (stats.pagbank_token) {
+                    document.getElementById('pagbank-token').value = stats.pagbank_token;
+                }
+                if (stats.active_payment_provider) {
+                    document.getElementById('active-provider').value = stats.active_payment_provider;
+                }
+
                 // Update Counts
                 document.getElementById('count-free').innerText = stats.users_free;
                 document.getElementById('count-pro').innerText = stats.users_pro;
@@ -717,7 +751,10 @@
                     headers: headers,
                     body: JSON.stringify({
                         prices: { free, pro, premium },
-                        pix_key: pix_key
+                        pix_key: pix_key,
+                        mercado_pago_access_token: mp_token,
+                        pagbank_token: pagbank_token,
+                        active_payment_provider: active_provider
                     })
                 });
 
@@ -744,7 +781,7 @@
             new Chart(document.getElementById('plansChart'), {
                 type: 'doughnut',
                 data: {
-                    labels: ['Free', 'Pro', 'Premium'],
+                    labels: ['Grátis', 'Pro', 'Premium'],
                     datasets: [{
                         data: [stats.users_free, stats.users_pro, stats.users_premium],
                         backgroundColor: ['#2563eb', '#db2777', '#06b6d4'], // Tailwind Blue, Pink, Cyan
@@ -768,7 +805,7 @@
             new Chart(document.getElementById('revenueChart'), {
                 type: 'bar',
                 data: {
-                    labels: ['Free', 'Pro', 'Premium'],
+                    labels: ['Grátis', 'Pro', 'Premium'],
                     datasets: [{
                         label: 'Receita Estimada (R$)',
                         data: [revFree, revPro, revPremium],

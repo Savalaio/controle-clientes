@@ -162,7 +162,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 "ALTER TABLE users ADD COLUMN smtp_pass TEXT",
                 "ALTER TABLE users ADD COLUMN created_at TEXT",
                 "ALTER TABLE users ADD COLUMN payment_status TEXT DEFAULT 'pending'",
-                "ALTER TABLE users ADD COLUMN due_date TEXT"
+                "ALTER TABLE users ADD COLUMN due_date TEXT",
+                "ALTER TABLE users ADD COLUMN last_payment_id TEXT",
+                "ALTER TABLE users ADD COLUMN last_payment_provider TEXT"
             ];
 
             columnsToAdd.forEach(sql => {
@@ -730,7 +732,7 @@ app.get('/api/admin/users', (req, res) => {
     const adminId = parseInt(req.headers['x-user-id']);
 
     if (!adminId) {
-        return res.status(401).json({ error: "Unauthorized: Missing Admin ID" });
+        return res.status(401).json({ error: "Não autorizado: ID de Admin ausente" });
     }
 
     // 2. Check if this Admin is the "Master" (ID=1) or a Sub-Admin
@@ -771,7 +773,7 @@ app.post('/api/admin/force-notifications', (req, res) => {
 // Check Status
 app.get('/api/admin/evolution/status', async (req, res) => {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: "Unauthorized: User ID required" });
+    if (!userId) return res.status(401).json({ error: "Não autorizado: ID de Usuário obrigatório" });
 
     const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
@@ -803,7 +805,7 @@ app.get('/api/admin/evolution/status', async (req, res) => {
 // Init Instance
 app.post('/api/admin/evolution/init', async (req, res) => {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: "Unauthorized: User ID required" });
+    if (!userId) return res.status(401).json({ error: "Não autorizado: ID de Usuário obrigatório" });
 
     const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
@@ -852,7 +854,7 @@ app.post('/api/admin/evolution/send', async (req, res) => {
 // Get Connect/QR Code
 app.get('/api/admin/evolution/connect', async (req, res) => {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: "Unauthorized: User ID required" });
+    if (!userId) return res.status(401).json({ error: "Não autorizado: ID de Usuário obrigatório" });
 
     const { url: apiUrl, key: apiKey, instanceName } = await getEvolutionCredentials(userId);
 
@@ -900,23 +902,23 @@ app.put('/api/admin/users/:id/role', (req, res) => {
     const targetUserId = req.params.id;
     const { role } = req.body;
 
-    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+    if (!adminId) return res.status(401).json({ error: "Não autorizado" });
 
     if (!['user', 'admin'].includes(role)) {
-        return res.status(400).json({ error: "Invalid role. Use 'user' or 'admin'." });
+        return res.status(400).json({ error: "Permissão inválida. Use 'user' ou 'admin'." });
     }
 
     // Check permissions
     // First, get the requester's details to verify if they are the Master
     db.get("SELECT * FROM users WHERE id = ?", [adminId], (err, requester) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (!requester) return res.status(401).json({ error: "Requester not found" });
+        if (!requester) return res.status(401).json({ error: "Solicitante não encontrado" });
 
         const isMaster = requester.id === 1 || requester.email === 'realizadorsonho@gmail.com';
 
         db.get("SELECT owner_id FROM users WHERE id = ?", [targetUserId], (err, user) => {
             if (err) return res.status(500).json({ error: err.message });
-            if (!user) return res.status(404).json({ error: "User not found" });
+            if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
 
             // Master Admin can do anything
             // Sub-Admin can only edit their own users
@@ -940,7 +942,7 @@ app.put('/api/admin/users/:id/role', (req, res) => {
 // Admin Create User (Scoped)
 app.post('/api/admin/users', (req, res) => {
     const adminId = parseInt(req.headers['x-user-id']);
-    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+    if (!adminId) return res.status(401).json({ error: "Não autorizado" });
 
     const { name, email, password, whatsapp, cpf } = req.body;
     
@@ -973,17 +975,17 @@ app.put('/api/admin/users/:id', (req, res) => {
     const { id } = req.params;
     const { name, email, whatsapp, cpf } = req.body;
 
-    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+    if (!adminId) return res.status(401).json({ error: "Não autorizado" });
 
     // Check permissions
     db.get("SELECT * FROM users WHERE id = ?", [adminId], (err, requester) => {
-        if (err || !requester) return res.status(401).json({ error: "Unauthorized" });
+        if (err || !requester) return res.status(401).json({ error: "Não autorizado" });
 
         const isMaster = requester.id === 1 || requester.email === 'realizadorsonho@gmail.com';
 
         db.get("SELECT owner_id FROM users WHERE id = ?", [id], (err, targetUser) => {
             if (err) return res.status(500).json({ error: err.message });
-            if (!targetUser) return res.status(404).json({ error: "User not found" });
+            if (!targetUser) return res.status(404).json({ error: "Usuário não encontrado" });
 
             if (!isMaster && targetUser.owner_id != adminId) {
                 return res.status(403).json({ error: "Permission denied" });
@@ -1007,11 +1009,11 @@ app.delete('/api/admin/users/:id', (req, res) => {
     const adminId = parseInt(req.headers['x-user-id']);
     const targetUserId = req.params.id;
 
-    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+    if (!adminId) return res.status(401).json({ error: "Não autorizado" });
 
     db.get("SELECT * FROM users WHERE id = ?", [adminId], (err, requester) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (!requester) return res.status(401).json({ error: "Requester not found" });
+        if (!requester) return res.status(401).json({ error: "Solicitante não encontrado" });
 
         const isMaster = requester.id === 1 || requester.email === 'realizadorsonho@gmail.com';
 
@@ -1021,7 +1023,7 @@ app.delete('/api/admin/users/:id', (req, res) => {
 
         db.run("DELETE FROM users WHERE id = ?", [targetUserId], function(err) {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "User deleted" });
+            res.json({ message: "Usuário excluído" });
         });
     });
 });
@@ -1061,7 +1063,7 @@ app.get('/api/tickets/:id', (req, res) => {
     
     db.get(`SELECT t.*, u.name as user_name FROM tickets t JOIN users u ON t.user_id = u.id WHERE t.id = ?`, [ticketId], (err, ticket) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+        if (!ticket) return res.status(404).json({ error: "Ticket não encontrado" });
 
         db.all(`SELECT tm.*, u.name as sender_name FROM ticket_messages tm JOIN users u ON tm.user_id = u.id WHERE tm.ticket_id = ? ORDER BY tm.created_at ASC`, [ticketId], (err, messages) => {
             if (err) return res.status(500).json({ error: err.message });
@@ -1080,7 +1082,7 @@ app.post('/api/tickets', (req, res) => {
         
         db.run(`INSERT INTO ticket_messages (ticket_id, user_id, message) VALUES (?, ?, ?)`, [ticketId, user_id, message], function(err) {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Ticket created", ticketId });
+            res.json({ message: "Ticket criado", ticketId });
         });
     });
 });
@@ -1099,7 +1101,7 @@ app.post('/api/tickets/:id/messages', (req, res) => {
             db.run(`UPDATE tickets SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [ticketId]);
         }
         
-        res.json({ message: "Reply added" });
+        res.json({ message: "Resposta adicionada" });
     });
 });
 
@@ -1149,19 +1151,19 @@ app.put('/api/admin/users/:id/plan', (req, res) => {
     const { id } = req.params;
     const { plan } = req.body;
 
-    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+    if (!adminId) return res.status(401).json({ error: "Não autorizado" });
 
     db.get("SELECT * FROM users WHERE id = ?", [adminId], (err, requester) => {
-        if (err || !requester) return res.status(401).json({ error: "Unauthorized" });
+        if (err || !requester) return res.status(401).json({ error: "Não autorizado" });
 
         const isMaster = requester.id === 1 || requester.email === 'realizadorsonho@gmail.com';
 
         db.get("SELECT owner_id FROM users WHERE id = ?", [id], (err, targetUser) => {
             if (err) return res.status(500).json({ error: err.message });
-            if (!targetUser) return res.status(404).json({ error: "User not found" });
+            if (!targetUser) return res.status(404).json({ error: "Usuário não encontrado" });
 
             if (!isMaster && targetUser.owner_id != adminId) {
-                return res.status(403).json({ error: "Permission denied" });
+                return res.status(403).json({ error: "Permissão negada" });
             }
 
             db.run("UPDATE users SET plan = ? WHERE id = ?", [plan, id], function(err) {
@@ -1201,6 +1203,8 @@ app.put('/api/admin/users/:id/status', (req, res) => {
     });
 });
 
+
+
 // Admin Stats
 app.get('/api/admin/stats', (req, res) => {
     const adminId = parseInt(req.headers['x-user-id']);
@@ -1225,6 +1229,9 @@ app.get('/api/admin/stats', (req, res) => {
                 if (s.key === 'price_pro') stats.prices.pro = parseFloat(s.value);
                 if (s.key === 'price_premium') stats.prices.premium = parseFloat(s.value);
                 if (s.key === 'pix_key') stats.pix_key = s.value;
+                if (s.key === 'mercado_pago_access_token') stats.mercado_pago_access_token = s.value;
+                if (s.key === 'pagbank_token') stats.pagbank_token = s.value;
+                if (s.key === 'active_payment_provider') stats.active_payment_provider = s.value;
                 if (s.key === 'evolution_api_url') stats.evolution_api_url = s.value;
                 if (s.key === 'evolution_api_key') stats.evolution_api_key = s.value;
             });
@@ -1278,7 +1285,7 @@ app.put('/api/admin/settings', (req, res) => {
     console.log(`[DEBUG] PUT /api/admin/settings - AdminID: ${adminId}`);
     if (!adminId) return res.status(401).json({ error: "Unauthorized" });
 
-    const { prices, pix_key, evolution_api_url, evolution_api_key } = req.body;
+    const { prices, pix_key, evolution_api_url, evolution_api_key, mercado_pago_access_token, pagbank_token, active_payment_provider } = req.body;
     
     const stmt = db.prepare("INSERT OR REPLACE INTO settings (user_id, key, value) VALUES (?, ?, ?)");
     
@@ -1291,6 +1298,14 @@ app.put('/api/admin/settings', (req, res) => {
     if (pix_key !== undefined) {
         stmt.run(adminId, 'pix_key', pix_key);
     }
+
+    if (active_payment_provider !== undefined) {
+        stmt.run(adminId, 'active_payment_provider', active_payment_provider);
+    }
+
+    if (pagbank_token !== undefined) {
+        stmt.run(adminId, 'pagbank_token', pagbank_token);
+    }
     
     if (evolution_api_url !== undefined) {
         stmt.run(adminId, 'evolution_api_url', evolution_api_url);
@@ -1299,10 +1314,270 @@ app.put('/api/admin/settings', (req, res) => {
     if (evolution_api_key !== undefined) {
         stmt.run(adminId, 'evolution_api_key', evolution_api_key);
     }
+
+    if (mercado_pago_access_token !== undefined) {
+        stmt.run(adminId, 'mercado_pago_access_token', mercado_pago_access_token);
+    }
     
     stmt.finalize();
 
     res.json({ message: "Configurações atualizadas" });
+});
+
+// --- MERCADO PAGO INTEGRATION ---
+
+// 1. Generate Pix Payment (Multi-Provider)
+app.post('/api/pay/pix', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) return res.status(400).json({ error: "ID do usuário é obrigatório" });
+
+    // 1. Get User Plan and Admin Settings
+    db.get("SELECT * FROM users WHERE id = ?", [userId], (err, user) => {
+        if (err || !user) return res.status(404).json({ error: "Usuário não encontrado" });
+
+        // Get Master Admin Settings (ID 1)
+        db.all("SELECT key, value FROM settings WHERE user_id = 1", async (err, rows) => {
+            if (err) return res.status(500).json({ error: "Database error" });
+
+            const settings = {};
+            rows.forEach(r => settings[r.key] = r.value);
+
+            // Determine Provider
+            const activeProvider = settings['active_payment_provider'] || 'mercadopago';
+            console.log(`[Payment] Generating Pix for User ${userId} via ${activeProvider}`);
+
+            // Determine Price
+            let amount = 0;
+            if (user.plan === 'pro') amount = parseFloat(settings['price_pro'] || 29.90);
+            else if (user.plan === 'premium') amount = parseFloat(settings['price_premium'] || 59.90);
+            else amount = 29.90; // Fallback
+
+            if (amount <= 0) amount = 1.00; // Minimum safety
+
+            try {
+                // --- PAGBANK INTEGRATION ---
+                if (activeProvider === 'pagbank') {
+                    const pagBankToken = settings['pagbank_token'];
+                    if (!pagBankToken) {
+                        return res.status(503).json({ error: "PagBank não configurado pelo administrador." });
+                    }
+
+                    const pagBankUrl = 'https://api.pagseguro.com/orders';
+                    const cleanCpf = (cpf) => cpf ? cpf.replace(/\D/g, '') : '';
+                    let payerCpf = cleanCpf(user.cpf);
+                    // Fallback CPF if invalid (PagBank requires valid CPF) - in prod use real validation
+                    if (!payerCpf || payerCpf.length !== 11) payerCpf = '12345678909'; 
+
+                    const body = {
+                        reference_id: `sub_${userId}_${Date.now()}`,
+                        customer: {
+                            name: user.name || 'Cliente',
+                            email: user.email,
+                            tax_id: payerCpf,
+                            phones: [{ country: "55", area: "11", number: "999999999", type: "MOBILE" }]
+                        },
+                        items: [{ name: `Assinatura Plano ${user.plan.toUpperCase()}`, quantity: 1, unit_amount: Math.round(amount * 100) }],
+                        qr_codes: [{ amount: { value: Math.round(amount * 100) }, expiration_date: new Date(Date.now() + 3600 * 1000).toISOString() }]
+                    };
+
+                    const response = await axios.post(pagBankUrl, body, {
+                        headers: { 'Authorization': `Bearer ${pagBankToken}`, 'Content-Type': 'application/json', 'x-api-version': '4.0' }
+                    });
+
+                    const qrCodeText = response.data.qr_codes[0].text;
+                    const qrCodeLinkObj = response.data.qr_codes[0].links.find(l => l.rel === "QRCODE.PNG");
+                    let qrCodeBase64 = '';
+                    
+                    if (qrCodeLinkObj) {
+                        const imageRes = await axios.get(qrCodeLinkObj.href, { responseType: 'arraybuffer' });
+                        // Return RAW base64 without prefix, as frontend adds it
+                        qrCodeBase64 = Buffer.from(imageRes.data, 'binary').toString('base64');
+                    }
+
+                    // Save context for status check
+                    db.run("UPDATE users SET last_payment_id = ?, last_payment_provider = 'pagbank' WHERE id = ?", [response.data.id, userId]);
+
+                    return res.json({ 
+                        qr_code: qrCodeText, 
+                        qr_code_base64: qrCodeBase64, 
+                        payment_id: response.data.id, 
+                        provider: 'pagbank' 
+                    });
+                }
+
+                // --- MERCADO PAGO INTEGRATION (Default) ---
+                else {
+                    const mpAccessToken = settings['mercado_pago_access_token'];
+                    if (!mpAccessToken) {
+                        return res.status(503).json({ error: "Mercado Pago não configurado." });
+                    }
+
+                    const response = await axios.post('https://api.mercadopago.com/v1/payments', {
+                        transaction_amount: amount,
+                        description: `Assinatura Plano ${user.plan.toUpperCase()} - Sistema Controle`,
+                        payment_method_id: 'pix',
+                        payer: {
+                            email: user.email,
+                            first_name: user.name ? user.name.split(' ')[0] : 'User',
+                            last_name: user.name ? (user.name.split(' ').slice(1).join(' ') || 'Name') : 'Name'
+                        },
+                        external_reference: String(userId),
+                        notification_url: `${process.env.API_URL || 'https://seu-dominio.com'}/api/pay/webhook`
+                    }, {
+                        headers: {
+                            'Authorization': `Bearer ${mpAccessToken}`,
+                            'Content-Type': 'application/json',
+                            'X-Idempotency-Key': `pay_${userId}_${Date.now()}`
+                        }
+                    });
+
+                    const pointOfInteraction = response.data.point_of_interaction;
+                    const transactionData = pointOfInteraction.transaction_data;
+
+                    // Save context for status check
+                    db.run("UPDATE users SET last_payment_id = ?, last_payment_provider = 'mercadopago' WHERE id = ?", [response.data.id, userId]);
+
+                    res.json({
+                        qr_code: transactionData.qr_code,
+                        qr_code_base64: transactionData.qr_code_base64,
+                        ticket_url: transactionData.ticket_url,
+                        payment_id: response.data.id,
+                        provider: 'mercadopago'
+                    });
+                }
+
+            } catch (error) {
+                console.error('Payment Error:', error.response?.data || error.message);
+                const providerName = activeProvider === 'pagbank' ? 'PagBank' : 'Mercado Pago';
+                res.status(500).json({ error: `Erro ao gerar PIX no ${providerName}`, details: error.response?.data });
+            }
+        });
+    });
+});
+
+// 2. Check Payment Status (Polling & Active Check)
+app.get('/api/pay/check/:userId', (req, res) => {
+    const { userId } = req.params;
+    
+    db.get("SELECT * FROM users WHERE id = ?", [userId], async (err, user) => {
+        if (err || !user) return res.status(404).json({ error: "Usuário não encontrado" });
+
+        // If already paid and active, just return success
+        if (user.payment_status === 'paid' && user.status === 'active') {
+             return res.json({ is_paid: true, status: user.status, due_date: user.due_date });
+        }
+
+        // If we have a pending payment context, try to verify it with the provider
+        if (user.last_payment_id && user.last_payment_provider) {
+            try {
+                // Get Admin Settings for Tokens
+                const settingsRows = await new Promise((resolve, reject) => {
+                     db.all("SELECT key, value FROM settings WHERE user_id = 1", (err, rows) => {
+                         if (err) reject(err); else resolve(rows);
+                     });
+                });
+                const settings = {};
+                settingsRows.forEach(r => settings[r.key] = r.value);
+
+                // --- CHECK PAGBANK ---
+                if (user.last_payment_provider === 'pagbank') {
+                     const pagBankToken = settings['pagbank_token'];
+                     if (pagBankToken) {
+                         const response = await axios.get(`https://api.pagseguro.com/orders/${user.last_payment_id}`, {
+                             headers: { 'Authorization': `Bearer ${pagBankToken}`, 'x-api-version': '4.0' }
+                         });
+                         
+                         const status = response.data.charges && response.data.charges[0] ? response.data.charges[0].status : null;
+                         
+                         if (status === 'PAID') {
+                             const newDueDate = new Date();
+                             newDueDate.setDate(newDueDate.getDate() + 30);
+                             const formattedDate = newDueDate.toISOString().split('T')[0];
+                             
+                             db.run("UPDATE users SET payment_status = 'paid', status = 'active', due_date = ? WHERE id = ?", [formattedDate, userId]);
+                             return res.json({ is_paid: true, status: 'active', due_date: formattedDate });
+                         }
+                     }
+                }
+                
+                // --- CHECK MERCADO PAGO ---
+                else if (user.last_payment_provider === 'mercadopago') {
+                     const mpAccessToken = settings['mercado_pago_access_token'];
+                     if (mpAccessToken) {
+                         const response = await axios.get(`https://api.mercadopago.com/v1/payments/${user.last_payment_id}`, {
+                             headers: { 'Authorization': `Bearer ${mpAccessToken}` }
+                         });
+                         
+                         if (response.data.status === 'approved') {
+                             const newDueDate = new Date();
+                             newDueDate.setDate(newDueDate.getDate() + 30);
+                             const formattedDate = newDueDate.toISOString().split('T')[0];
+                             
+                             db.run("UPDATE users SET payment_status = 'paid', status = 'active', due_date = ? WHERE id = ?", [formattedDate, userId]);
+                             return res.json({ is_paid: true, status: 'active', due_date: formattedDate });
+                         }
+                     }
+                }
+
+            } catch (error) {
+                console.error(`Error checking payment status for user ${userId}:`, error.message);
+                // Continue to return db status if check fails
+            }
+        }
+        
+        // Default return based on DB
+        const isPaid = user.payment_status === 'paid' && user.status === 'active';
+        res.json({ is_paid: isPaid, status: user.status, due_date: user.due_date });
+    });
+});
+
+// 3. Webhook (Simple)
+app.post('/api/pay/webhook', async (req, res) => {
+    const { type, data } = req.body;
+    
+    // Always return 200 OK to Mercado Pago
+    res.status(200).send('OK');
+
+    if (type === 'payment') {
+        const paymentId = data.id;
+        
+        // Get Master Admin Token
+        db.all("SELECT key, value FROM settings WHERE user_id = 1", async (err, rows) => {
+            if (err) return;
+            const settings = {};
+            rows.forEach(r => settings[r.key] = r.value);
+            const mpAccessToken = settings['mercado_pago_access_token'];
+            if (!mpAccessToken) return;
+
+            try {
+                const mpRes = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+                    headers: { 'Authorization': `Bearer ${mpAccessToken}` }
+                });
+
+                const payment = mpRes.data;
+                if (payment.status === 'approved') {
+                    const userId = payment.external_reference;
+                    console.log(`Pagamento aprovado para User ID: ${userId}`);
+
+                    // Update User
+                    const newDueDate = new Date();
+                    newDueDate.setDate(newDueDate.getDate() + 30);
+                    const dueDateStr = newDueDate.toISOString().split('T')[0];
+
+                    db.run(`UPDATE users SET status = 'active', payment_status = 'paid', due_date = ? WHERE id = ?`, 
+                        [dueDateStr, userId], 
+                        (err) => {
+                            if (err) console.error("Error activating user after payment:", err);
+                            else console.log(`User ${userId} activated via Webhook!`);
+                        }
+                    );
+                }
+            } catch (e) {
+                console.error("Webhook Error:", e.message);
+            }
+        });
+    }
 });
 
 // Login
@@ -1335,7 +1610,10 @@ app.post('/api/login', (req, res) => {
 
             // Check Blocked Status
             if (row.status === 'blocked') {
-                return res.status(403).json({ error: "Conta bloqueada. Contate o administrador." });
+                return res.status(403).json({ 
+                    error: "Conta bloqueada. Contate o administrador.",
+                    user_id: row.id // Needed for payment
+                });
             }
 
             // Check Payment Status (Auto-Block Logic)
@@ -1346,7 +1624,8 @@ app.post('/api/login', (req, res) => {
                      // Mas por enquanto vamos apenas impedir o login
                      return res.status(402).json({ 
                         error: "Plano vencido. Realize o pagamento para continuar.",
-                        is_overdue: true
+                        is_overdue: true,
+                        user_id: row.id // Needed for payment
                      });
                 }
             }
@@ -1479,7 +1758,7 @@ app.put('/api/user/payment', (req, res) => {
 
 app.get('/api/subscriptions', (req, res) => {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) return res.status(401).json({ error: 'Não autorizado' });
     db.all("SELECT * FROM subscriptions WHERE user_id = ? ORDER BY day_of_month ASC", [userId], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
@@ -1488,7 +1767,7 @@ app.get('/api/subscriptions', (req, res) => {
 
 app.post('/api/subscriptions', (req, res) => {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) return res.status(401).json({ error: 'Não autorizado' });
     const { name, email, phone, product, value, day_of_month } = req.body;
     if (!name || !value || !day_of_month) return res.status(400).json({ error: 'Nome, valor e dia são obrigatórios' });
     
@@ -1730,7 +2009,7 @@ app.post('/api/ai/parse-client', async (req, res) => {
 // Get all clients
 app.get('/api/clients', (req, res) => {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) return res.status(401).json({ error: 'Não autorizado' });
 
     const { status, search } = req.query;
     let query = "SELECT * FROM clients WHERE user_id = ?";
@@ -1763,12 +2042,12 @@ app.get('/api/clients', (req, res) => {
 // Add new client
 app.post('/api/clients', (req, res) => {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) return res.status(401).json({ error: 'Não autorizado' });
 
     // Check Plan Limits
     db.get("SELECT plan FROM users WHERE id = ?", [userId], (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (!user) return res.status(404).json({ error: "User not found" });
+        if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
 
         if (user.plan === 'free') {
             db.get("SELECT count(*) as count FROM clients WHERE user_id = ?", [userId], (err, row) => {
