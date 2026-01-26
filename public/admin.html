@@ -737,6 +737,11 @@
             const pro = document.getElementById('price-pro').value;
             const premium = document.getElementById('price-premium').value;
             const pix_key = document.getElementById('pix-key').value;
+            
+            // Payment Provider Settings
+            const mp_token = document.getElementById('mp-token').value;
+            const pagbank_token = document.getElementById('pagbank-token').value;
+            const active_provider = document.getElementById('active-provider').value;
 
             const userToken = localStorage.getItem('user_token');
             const currentUser = userToken ? JSON.parse(userToken) : null;
