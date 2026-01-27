@@ -277,6 +277,16 @@
                     <label class="block text-gray-400 text-sm mb-2">PagBank Token (Sandbox/Produção)</label>
                     <input type="text" id="pagbank-token" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-blue-500" placeholder="Token do PagBank">
                     <p class="text-xs text-gray-500 mt-1">Necessário para gerar QR Code Pix automático via PagBank.</p>
+                    
+                    <div class="mt-4 border-t border-gray-800 pt-4">
+                        <label class="block text-gray-400 text-sm mb-2">Ambiente PagBank</label>
+                        <select id="pagbank-env" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-blue-500">
+                            <option value="sandbox">Sandbox (Testes)</option>
+                            <option value="production" selected>Produção</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Selecione "Sandbox" para usar tokens de teste ou "Produção" para tokens reais (Venda Online).</p>
+                    </div>
+
                     <div class="mt-2 text-xs text-yellow-500 flex items-center gap-2">
                          <i class="fas fa-exclamation-triangle"></i>
                          <span id="server-ip-display">Verificando IP do servidor...</span>
@@ -691,6 +701,9 @@
                 if (stats.pagbank_token) {
                     document.getElementById('pagbank-token').value = stats.pagbank_token;
                 }
+                if (stats.pagbank_env) {
+                    document.getElementById('pagbank-env').value = stats.pagbank_env;
+                }
                 if (stats.active_payment_provider) {
                     document.getElementById('active-provider').value = stats.active_payment_provider;
                 }
@@ -760,6 +773,7 @@
             // Payment Provider Settings
             const mp_token = document.getElementById('mp-token').value;
             const pagbank_token = document.getElementById('pagbank-token').value;
+            const pagbank_env = document.getElementById('pagbank-env').value;
             const active_provider = document.getElementById('active-provider').value;
 
             const userToken = localStorage.getItem('user_token');
@@ -778,6 +792,7 @@
                         pix_key: pix_key,
                         mercado_pago_access_token: mp_token,
                         pagbank_token: pagbank_token,
+                        pagbank_env: pagbank_env,
                         active_payment_provider: active_provider
                     })
                 });

@@ -1231,6 +1231,7 @@ app.get('/api/admin/stats', (req, res) => {
                 if (s.key === 'pix_key') stats.pix_key = s.value;
                 if (s.key === 'mercado_pago_access_token') stats.mercado_pago_access_token = s.value;
                 if (s.key === 'pagbank_token') stats.pagbank_token = s.value;
+                if (s.key === 'pagbank_env') stats.pagbank_env = s.value;
                 if (s.key === 'active_payment_provider') stats.active_payment_provider = s.value;
                 if (s.key === 'evolution_api_url') stats.evolution_api_url = s.value;
                 if (s.key === 'evolution_api_key') stats.evolution_api_key = s.value;
@@ -1285,7 +1286,7 @@ app.put('/api/admin/settings', (req, res) => {
     console.log(`[DEBUG] PUT /api/admin/settings - AdminID: ${adminId}`);
     if (!adminId) return res.status(401).json({ error: "Unauthorized" });
 
-    const { prices, pix_key, evolution_api_url, evolution_api_key, mercado_pago_access_token, pagbank_token, active_payment_provider } = req.body;
+    const { prices, pix_key, evolution_api_url, evolution_api_key, mercado_pago_access_token, pagbank_token, pagbank_env, active_payment_provider } = req.body;
     
     const stmt = db.prepare("INSERT OR REPLACE INTO settings (user_id, key, value) VALUES (?, ?, ?)");
     
@@ -1305,6 +1306,10 @@ app.put('/api/admin/settings', (req, res) => {
 
     if (pagbank_token !== undefined) {
         stmt.run(adminId, 'pagbank_token', pagbank_token);
+    }
+
+    if (pagbank_env !== undefined) {
+        stmt.run(adminId, 'pagbank_env', pagbank_env);
     }
     
     if (evolution_api_url !== undefined) {
@@ -1359,8 +1364,10 @@ app.post('/api/pay/pix', async (req, res) => {
             rows.forEach(r => settings[r.key] = r.value);
 
             // Determine Provider
-            const activeProvider = settings['active_payment_provider'] || 'mercadopago';
-            console.log(`[Payment] Generating Pix for User ${userId} via ${activeProvider} (Admin ${adminId})`);
+                const activeProvider = settings['active_payment_provider'] || 'mercadopago';
+                const pagBankEnv = settings['pagbank_env'] || 'production'; // Default to production
+                
+                console.log(`[Payment] Generating Pix for User ${userId} via ${activeProvider} (Admin ${adminId}) [Env: ${pagBankEnv}]`);
             
             // Debug: Log if token exists
             if (activeProvider === 'pagbank' && !settings['pagbank_token']) {
@@ -1382,15 +1389,25 @@ app.post('/api/pay/pix', async (req, res) => {
 
             try {
                 // --- PAGBANK INTEGRATION ---
-                if (activeProvider === 'pagbank') {
-                    const pagBankToken = settings['pagbank_token'];
-                    if (!pagBankToken) {
-                        return res.status(503).json({ error: "PagBank não configurado pelo administrador." });
-                    }
+                        if (activeProvider === 'pagbank') {
+                            let pagBankToken = settings['pagbank_token'];
+                            if (!pagBankToken) {
+                                return res.status(503).json({ error: "PagBank não configurado pelo administrador." });
+                            }
+                            
+                            // Ensure Bearer prefix
+                            if (!pagBankToken.startsWith('Bearer ')) {
+                                pagBankToken = `Bearer ${pagBankToken}`;
+                            }
 
-                    const pagBankUrl = 'https://api.pagseguro.com/orders';
-                    const cleanCpf = (cpf) => cpf ? cpf.replace(/\D/g, '') : '';
-                    let payerCpf = cleanCpf(user.cpf);
+                            const pagBankUrl = pagBankEnv === 'sandbox' 
+                                ? 'https://sandbox.api.pagseguro.com/orders'
+                                : 'https://api.pagseguro.com/orders';
+                            
+                            console.log(`[PagBank] Using URL: ${pagBankUrl}`);
+
+                            const cleanCpf = (cpf) => cpf ? cpf.replace(/\D/g, '') : '';
+                            let payerCpf = cleanCpf(user.cpf);
                     // Fallback CPF if invalid (PagBank requires valid CPF) - in prod use real validation
                     if (!payerCpf || payerCpf.length !== 11) payerCpf = '12345678909'; 
 
