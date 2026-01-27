@@ -1465,7 +1465,19 @@ app.post('/api/pay/pix', async (req, res) => {
             } catch (error) {
                 console.error('Payment Error:', error.response?.data || error.message);
                 const providerName = activeProvider === 'pagbank' ? 'PagBank' : 'Mercado Pago';
-                res.status(500).json({ error: `Erro ao gerar PIX no ${providerName}`, details: error.response?.data });
+                
+                // Enhanced Error Handling for PagBank
+                if (activeProvider === 'pagbank' && error.response) {
+                    if (error.response.status === 401) {
+                         return res.status(401).json({ error: "Erro de Autenticação PagBank: Verifique se o Token está correto." });
+                    }
+                    if (error.response.data && error.response.data.error_messages) {
+                         const msgs = error.response.data.error_messages.map(e => e.description || e.message).join('; ');
+                         return res.status(400).json({ error: `PagBank rejeitou: ${msgs}` });
+                    }
+                }
+
+                res.status(500).json({ error: `Erro ao gerar PIX no ${providerName}`, details: error.response?.data || error.message });
             }
         });
     });
