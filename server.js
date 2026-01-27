@@ -1659,14 +1659,33 @@ app.get('/api/pay/check/:userId', (req, res) => {
                          });
                          
                          const status = response.data.charges && response.data.charges[0] ? response.data.charges[0].status : null;
-                         
+                         const createdAt = response.data.created_at; // ISO String
+
                          if (status === 'PAID') {
-                             const newDueDate = new Date();
-                             newDueDate.setDate(newDueDate.getDate() + 30);
-                             const formattedDate = newDueDate.toISOString().split('T')[0];
-                             
-                             db.run("UPDATE users SET payment_status = 'paid', status = 'active', due_date = ? WHERE id = ?", [formattedDate, userId]);
-                             return res.json({ is_paid: true, status: 'active', due_date: formattedDate });
+                             // Date Check: Ensure payment is NEWER than the current due date (if overdue)
+                             // This prevents re-using an old payment ID to unlock the account
+                             let isNewPayment = true;
+                             if (user.due_date) {
+                                 const txnDate = new Date(createdAt);
+                                 const dueDate = new Date(user.due_date);
+                                 // Add a small buffer (e.g. 1 day) to handle timezone edge cases, but generally txn must be > due
+                                 // Actually, if it's the SAME payment that caused the due date, it would be older. 
+                                 // Logic: If user is OVERDUE, the due date is in the past. 
+                                 // A VALID renewal payment must be AFTER the due date.
+                                 if (txnDate < dueDate) {
+                                     console.warn(`[Payment Check] Ignored OLD payment (ID: ${user.last_payment_id}) for User ${userId}. TxnDate: ${txnDate.toISOString()} < DueDate: ${dueDate.toISOString()}`);
+                                     isNewPayment = false;
+                                 }
+                             }
+
+                             if (isNewPayment) {
+                                 const newDueDate = new Date();
+                                 newDueDate.setDate(newDueDate.getDate() + 30);
+                                 const formattedDate = newDueDate.toISOString().split('T')[0];
+                                 
+                                 db.run("UPDATE users SET payment_status = 'paid', status = 'active', due_date = ? WHERE id = ?", [formattedDate, userId]);
+                                 return res.json({ is_paid: true, status: 'active', due_date: formattedDate });
+                             }
                          }
                      }
                 }
@@ -1680,12 +1699,26 @@ app.get('/api/pay/check/:userId', (req, res) => {
                          });
                          
                          if (response.data.status === 'approved') {
-                             const newDueDate = new Date();
-                             newDueDate.setDate(newDueDate.getDate() + 30);
-                             const formattedDate = newDueDate.toISOString().split('T')[0];
-                             
-                             db.run("UPDATE users SET payment_status = 'paid', status = 'active', due_date = ? WHERE id = ?", [formattedDate, userId]);
-                             return res.json({ is_paid: true, status: 'active', due_date: formattedDate });
+                             // Date Check for Mercado Pago
+                             const createdAt = response.data.date_created;
+                             let isNewPayment = true;
+                             if (user.due_date) {
+                                 const txnDate = new Date(createdAt);
+                                 const dueDate = new Date(user.due_date);
+                                 if (txnDate < dueDate) {
+                                     console.warn(`[Payment Check] Ignored OLD payment (ID: ${user.last_payment_id}) for User ${userId}. TxnDate: ${txnDate.toISOString()} < DueDate: ${dueDate.toISOString()}`);
+                                     isNewPayment = false;
+                                 }
+                             }
+
+                             if (isNewPayment) {
+                                 const newDueDate = new Date();
+                                 newDueDate.setDate(newDueDate.getDate() + 30);
+                                 const formattedDate = newDueDate.toISOString().split('T')[0];
+                                 
+                                 db.run("UPDATE users SET payment_status = 'paid', status = 'active', due_date = ? WHERE id = ?", [formattedDate, userId]);
+                                 return res.json({ is_paid: true, status: 'active', due_date: formattedDate });
+                             }
                          }
                      }
                 }
