@@ -1336,8 +1336,13 @@ app.post('/api/pay/pix', async (req, res) => {
     db.get("SELECT * FROM users WHERE id = ?", [userId], (err, user) => {
         if (err || !user) return res.status(404).json({ error: "Usuário não encontrado" });
 
-        // Get Master Admin Settings (ID 1)
-        db.all("SELECT key, value FROM settings WHERE user_id = 1", async (err, rows) => {
+        // Get Settings from the User's Owner (Admin)
+        // If owner_id is null/undefined, fallback to ID 1 (Master)
+        const adminId = user.owner_id || 1;
+        
+        console.log(`[Payment] Fetching settings for Admin ID: ${adminId} (User Owner)`);
+
+        db.all("SELECT key, value FROM settings WHERE user_id = ?", [adminId], async (err, rows) => {
             if (err) return res.status(500).json({ error: "Database error" });
 
             const settings = {};
@@ -1345,7 +1350,12 @@ app.post('/api/pay/pix', async (req, res) => {
 
             // Determine Provider
             const activeProvider = settings['active_payment_provider'] || 'mercadopago';
-            console.log(`[Payment] Generating Pix for User ${userId} via ${activeProvider}`);
+            console.log(`[Payment] Generating Pix for User ${userId} via ${activeProvider} (Admin ${adminId})`);
+            
+            // Debug: Log if token exists
+            if (activeProvider === 'pagbank' && !settings['pagbank_token']) {
+                console.error(`[Payment] Error: PagBank selected but token missing for Admin ${adminId}`);
+            }
 
             // Determine Price
             let amount = 0;
