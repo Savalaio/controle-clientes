@@ -1384,6 +1384,10 @@ app.post('/api/pay/pix', async (req, res) => {
                  } else {
                      activeProvider = 'mercadopago';
                  }
+            } else if (activeProvider === 'mercadopago' && !settings['mercado_pago_access_token'] && settings['pagbank_token']) {
+                 // SANITY CHECK: Explicitly set to MP but NO TOKEN, and HAS PagBank token. Switch to PagBank.
+                 console.warn(`[Payment] Provider mismatch detected! Configured: MercadoPago (No Token) -> Switching to PagBank (Token Found)`);
+                 activeProvider = 'pagbank';
             }
 
             const pagBankEnv = settings['pagbank_env'] || 'production'; 
