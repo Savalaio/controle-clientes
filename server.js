@@ -1763,7 +1763,7 @@ app.post('/api/login', (req, res) => {
                 return res.status(401).json({ error: "Credenciais inválidas" });
             }
 
-            // Check Blocked Status
+            // Check Blocked Status (Manual Block)
             if (row.status === 'blocked') {
                 return res.status(403).json({ 
                     error: "Conta bloqueada. Contate o administrador.",
@@ -1771,10 +1771,17 @@ app.post('/api/login', (req, res) => {
                 });
             }
 
-            // Check Payment Status (Auto-Block Logic)
+            // Check Payment Status (Auto-Block Logic for Overdue or Pending Payment)
             if (row.plan !== 'free' && row.role !== 'admin') {
                 const today = new Date().toISOString().split('T')[0];
-                if (row.due_date && row.due_date < today && row.payment_status !== 'paid') {
+                
+                // Condition 1: Overdue
+                const isOverdue = row.due_date && row.due_date < today && row.payment_status !== 'paid';
+                
+                // Condition 2: Pending Initial Payment (Newly Registered)
+                const isPendingPayment = row.status === 'pending_payment';
+
+                if (isOverdue || isPendingPayment) {
                      // Get Settings for Price Calculation
                      const adminId = row.owner_id || 1;
                      db.all("SELECT key, value FROM settings WHERE user_id = ?", [adminId], (err, settingsRows) => {
@@ -1800,7 +1807,7 @@ app.post('/api/login', (req, res) => {
                                 total: baseAmount
                             };
                             
-                            if (row.due_date) {
+                            if (isOverdue && row.due_date) {
                                 const now = new Date();
                                 const due = new Date(row.due_date);
                                 now.setHours(0,0,0,0);
@@ -1834,8 +1841,8 @@ app.post('/api/login', (req, res) => {
                         }
 
                         return res.status(402).json({ 
-                            error: "Plano vencido. Realize o pagamento para continuar.",
-                            is_overdue: true,
+                            error: isPendingPayment ? "Pagamento pendente. Realize o pagamento para ativar sua conta." : "Plano vencido. Realize o pagamento para continuar.",
+                            is_overdue: true, // Trigger payment modal
                             user_id: row.id,
                             amount_details: amount_details
                          });
