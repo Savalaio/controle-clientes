@@ -1021,9 +1021,19 @@ app.delete('/api/admin/users/:id', (req, res) => {
             return res.status(403).json({ error: "Apenas o Administrador Principal pode excluir usuários." });
         }
 
-        db.run("DELETE FROM users WHERE id = ?", [targetUserId], function(err) {
+        // Check if target user is a Master
+        db.get("SELECT role FROM users WHERE id = ?", [targetUserId], (err, targetUser) => {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Usuário excluído" });
+            if (!targetUser) return res.status(404).json({ error: "Usuário alvo não encontrado" });
+
+            if (targetUser.role === 'master') {
+                return res.status(403).json({ error: "Não é permitido excluir um Administrador Master." });
+            }
+
+            db.run("DELETE FROM users WHERE id = ?", [targetUserId], function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: "Usuário excluído" });
+            });
         });
     });
 });
@@ -1380,12 +1390,59 @@ app.post('/api/pay/pix', async (req, res) => {
             }
 
             // Determine Price
-            let amount = 0;
-            if (user.plan === 'pro') amount = parseFloat(settings['price_pro'] || 29.90);
-            else if (user.plan === 'premium') amount = parseFloat(settings['price_premium'] || 59.90);
-            else amount = 29.90; // Fallback
+            let baseAmount = 0;
+            if (user.plan === 'pro') baseAmount = parseFloat(settings['price_pro'] || 29.90);
+            else if (user.plan === 'premium') baseAmount = parseFloat(settings['price_premium'] || 59.90);
+            else baseAmount = 29.90; // Fallback
 
-            if (amount <= 0) amount = 1.00; // Minimum safety
+            if (baseAmount <= 0) baseAmount = 1.00; // Minimum safety
+
+            // Calculate Interest/Penalty if Overdue
+            let amount = baseAmount;
+            let interestInfo = {
+                days_overdue: 0,
+                base_value: baseAmount,
+                addition: 0,
+                total: baseAmount
+            };
+
+            if (user.due_date) {
+                const now = new Date();
+                const due = new Date(user.due_date);
+                // Reset time part for accurate day calculation
+                now.setHours(0,0,0,0);
+                due.setHours(0,0,0,0);
+
+                if (now > due) {
+                    const diffTime = Math.abs(now - due);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays > 0) {
+                        // Interest Logic: 2% Penalty + 0.33% per day (approx 10% month)
+                        // This is a standard practice in Brazil
+                        const penaltyRate = 0.02; // 2% fixed
+                        const dailyRate = 0.0033; // 0.33% per day
+                        
+                        const penaltyValue = baseAmount * penaltyRate;
+                        const interestValue = baseAmount * dailyRate * diffDays;
+                        const totalAddition = penaltyValue + interestValue;
+
+                        amount = baseAmount + totalAddition;
+                        
+                        // Round to 2 decimals
+                        amount = Math.round(amount * 100) / 100;
+                        
+                        interestInfo = {
+                            days_overdue: diffDays,
+                            base_value: baseAmount,
+                            addition: totalAddition,
+                            total: amount
+                        };
+                        
+                        console.log(`[Payment] User ${userId} is overdue by ${diffDays} days. Applying interest. Base: ${baseAmount}, New: ${amount}`);
+                    }
+                }
+            }
 
             try {
                 // --- PAGBANK INTEGRATION ---
@@ -1459,7 +1516,8 @@ app.post('/api/pay/pix', async (req, res) => {
                         qr_code: qrCodeText, 
                         qr_code_base64: qrCodeBase64, 
                         payment_id: response.data.id, 
-                        provider: 'pagbank' 
+                        provider: 'pagbank',
+                        amount_details: interestInfo 
                     });
                 }
 
@@ -1500,7 +1558,8 @@ app.post('/api/pay/pix', async (req, res) => {
                         qr_code_base64: transactionData.qr_code_base64,
                         ticket_url: transactionData.ticket_url,
                         payment_id: response.data.id,
-                        provider: 'mercadopago'
+                        provider: 'mercadopago',
+                        amount_details: interestInfo
                     });
                 }
 
@@ -1540,21 +1599,36 @@ app.get('/api/pay/check/:userId', (req, res) => {
         // If we have a pending payment context, try to verify it with the provider
         if (user.last_payment_id && user.last_payment_provider) {
             try {
-                // Get Admin Settings for Tokens
+                // Get Admin Settings for Tokens (Respect User Owner)
+                const adminId = user.owner_id || 1;
+                
                 const settingsRows = await new Promise((resolve, reject) => {
-                     db.all("SELECT key, value FROM settings WHERE user_id = 1", (err, rows) => {
+                     db.all("SELECT key, value FROM settings WHERE user_id = ?", [adminId], (err, rows) => {
                          if (err) reject(err); else resolve(rows);
                      });
                 });
                 const settings = {};
-                settingsRows.forEach(r => settings[r.key] = r.value);
+                (settingsRows || []).forEach(r => settings[r.key] = r.value);
 
                 // --- CHECK PAGBANK ---
                 if (user.last_payment_provider === 'pagbank') {
-                     const pagBankToken = settings['pagbank_token'];
+                     let pagBankToken = settings['pagbank_token'];
+                     const pagBankEnv = settings['pagbank_env'] || 'production';
+                     
                      if (pagBankToken) {
-                         const response = await axios.get(`https://api.pagseguro.com/orders/${user.last_payment_id}`, {
-                             headers: { 'Authorization': `Bearer ${pagBankToken}`, 'x-api-version': '4.0' }
+                         // Ensure Bearer prefix
+                         if (!pagBankToken.startsWith('Bearer ')) {
+                             pagBankToken = `Bearer ${pagBankToken}`;
+                         }
+
+                         const pagBankUrl = pagBankEnv === 'sandbox' 
+                             ? `https://sandbox.api.pagseguro.com/orders/${user.last_payment_id}`
+                             : `https://api.pagseguro.com/orders/${user.last_payment_id}`;
+
+                         console.log(`[Payment Check] Checking User ${userId} (Admin ${adminId}) on ${pagBankEnv}. URL: ${pagBankUrl}`);
+
+                         const response = await axios.get(pagBankUrl, {
+                             headers: { 'Authorization': `${pagBankToken}`, 'x-api-version': '4.0' }
                          });
                          
                          const status = response.data.charges && response.data.charges[0] ? response.data.charges[0].status : null;
@@ -1689,13 +1763,72 @@ app.post('/api/login', (req, res) => {
             if (row.plan !== 'free' && row.role !== 'admin') {
                 const today = new Date().toISOString().split('T')[0];
                 if (row.due_date && row.due_date < today && row.payment_status !== 'paid') {
-                     // Opcional: Atualizar status para 'blocked' no banco para persistir
-                     // Mas por enquanto vamos apenas impedir o login
-                     return res.status(402).json({ 
-                        error: "Plano vencido. Realize o pagamento para continuar.",
-                        is_overdue: true,
-                        user_id: row.id // Needed for payment
+                     // Get Settings for Price Calculation
+                     const adminId = row.owner_id || 1;
+                     db.all("SELECT key, value FROM settings WHERE user_id = ?", [adminId], (err, settingsRows) => {
+                        let amount_details = null;
+                        
+                        if (!err && settingsRows) {
+                            const settings = {};
+                            settingsRows.forEach(r => settings[r.key] = r.value);
+                            
+                            let baseAmount = 0;
+                            if (row.plan === 'pro') baseAmount = parseFloat(settings['price_pro'] || 29.90);
+                            else if (row.plan === 'premium') baseAmount = parseFloat(settings['price_premium'] || 59.90);
+                            else baseAmount = 29.90;
+
+                            if (baseAmount <= 0) baseAmount = 1.00;
+
+                            // Calculate Interest
+                            let amount = baseAmount;
+                            let interestInfo = {
+                                days_overdue: 0,
+                                base_value: baseAmount,
+                                addition: 0,
+                                total: baseAmount
+                            };
+                            
+                            if (row.due_date) {
+                                const now = new Date();
+                                const due = new Date(row.due_date);
+                                now.setHours(0,0,0,0);
+                                due.setHours(0,0,0,0);
+                                
+                                if (now > due) {
+                                    const diffTime = Math.abs(now - due);
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    
+                                    if (diffDays > 0) {
+                                        const penaltyRate = 0.02; 
+                                        const dailyRate = 0.0033;
+                                        
+                                        const penaltyValue = baseAmount * penaltyRate;
+                                        const interestValue = baseAmount * dailyRate * diffDays;
+                                        const totalAddition = penaltyValue + interestValue;
+
+                                        amount = baseAmount + totalAddition;
+                                        amount = Math.round(amount * 100) / 100;
+                                        
+                                        interestInfo = {
+                                            days_overdue: diffDays,
+                                            base_value: baseAmount,
+                                            addition: totalAddition,
+                                            total: amount
+                                        };
+                                    }
+                                }
+                            }
+                            amount_details = interestInfo;
+                        }
+
+                        return res.status(402).json({ 
+                            error: "Plano vencido. Realize o pagamento para continuar.",
+                            is_overdue: true,
+                            user_id: row.id,
+                            amount_details: amount_details
+                         });
                      });
+                     return; // Ensure we don't send response twice
                 }
             }
 
@@ -1717,7 +1850,7 @@ app.post('/api/login', (req, res) => {
 
 // Register
 app.post('/api/register', (req, res) => {
-    const { name, email, password, whatsapp, cpf } = req.body;
+    const { name, email, password, whatsapp, cpf, plan } = req.body;
 
     if (!name || !email || !password) {
         return res.status(400).json({ error: "Nome, email e senha são obrigatórios" });
@@ -1729,20 +1862,32 @@ app.post('/api/register', (req, res) => {
     const bcrypt = require('bcryptjs');
     const hashedPassword = bcrypt.hashSync(password, 8);
 
+    const userPlan = plan || 'free';
+    const status = userPlan !== 'free' ? 'pending_payment' : 'active';
+
     const sql = `INSERT INTO users (name, email, password, whatsapp, cpf, plan, status, created_at) 
-                 VALUES (?, ?, ?, ?, ?, 'free', 'active', ?)`;
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
     
-    db.run(sql, [name, email, hashedPassword, whatsapp, cpf, created_at], function(err) {
+    db.run(sql, [name, email, hashedPassword, whatsapp, cpf, userPlan, status, created_at], function(err) {
         if (err) {
             if (err.message.includes('UNIQUE constraint failed')) {
                 return res.status(400).json({ error: "Email já cadastrado" });
             }
             return res.status(500).json({ error: err.message });
         }
-        res.json({ 
+        
+        const responseData = { 
             message: "success", 
-            user: { id: this.lastID, name, email } 
-        });
+            user: { id: this.lastID, name, email, plan: userPlan } 
+        };
+        
+        // Se for plano pago, indicar que requer pagamento
+        if (userPlan !== 'free') {
+            responseData.requires_payment = true;
+            responseData.user_id = this.lastID;
+        }
+        
+        res.json(responseData);
     });
 });
 
