@@ -1663,15 +1663,18 @@ app.get('/api/pay/check/:userId', (req, res) => {
 
                          if (status === 'PAID') {
                              // Date Check: Ensure payment is NEWER than the current due date (if overdue)
-                             // This prevents re-using an old payment ID to unlock the account
+                             // AND ensure payment is RECENT (created within last 24h) to avoid re-using very old transactions
                              let isNewPayment = true;
-                             if (user.due_date) {
-                                 const txnDate = new Date(createdAt);
+                             const txnDate = new Date(createdAt);
+                             const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+                             if (txnDate < oneDayAgo) {
+                                 console.warn(`[Payment Check] Ignored OLD payment (ID: ${user.last_payment_id}) for User ${userId}. TxnDate: ${txnDate.toISOString()} is older than 24h.`);
+                                 isNewPayment = false;
+                             }
+
+                             if (isNewPayment && user.due_date) {
                                  const dueDate = new Date(user.due_date);
-                                 // Add a small buffer (e.g. 1 day) to handle timezone edge cases, but generally txn must be > due
-                                 // Actually, if it's the SAME payment that caused the due date, it would be older. 
-                                 // Logic: If user is OVERDUE, the due date is in the past. 
-                                 // A VALID renewal payment must be AFTER the due date.
                                  if (txnDate < dueDate) {
                                      console.warn(`[Payment Check] Ignored OLD payment (ID: ${user.last_payment_id}) for User ${userId}. TxnDate: ${txnDate.toISOString()} < DueDate: ${dueDate.toISOString()}`);
                                      isNewPayment = false;
@@ -1702,8 +1705,15 @@ app.get('/api/pay/check/:userId', (req, res) => {
                              // Date Check for Mercado Pago
                              const createdAt = response.data.date_created;
                              let isNewPayment = true;
-                             if (user.due_date) {
-                                 const txnDate = new Date(createdAt);
+                             const txnDate = new Date(createdAt);
+                             const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+                             if (txnDate < oneDayAgo) {
+                                 console.warn(`[Payment Check] Ignored OLD payment (ID: ${user.last_payment_id}) for User ${userId}. TxnDate: ${txnDate.toISOString()} is older than 24h.`);
+                                 isNewPayment = false;
+                             }
+
+                             if (isNewPayment && user.due_date) {
                                  const dueDate = new Date(user.due_date);
                                  if (txnDate < dueDate) {
                                      console.warn(`[Payment Check] Ignored OLD payment (ID: ${user.last_payment_id}) for User ${userId}. TxnDate: ${txnDate.toISOString()} < DueDate: ${dueDate.toISOString()}`);
