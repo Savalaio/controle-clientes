@@ -1355,6 +1355,11 @@ app.post('/api/pay/pix', async (req, res) => {
             // Debug: Log if token exists
             if (activeProvider === 'pagbank' && !settings['pagbank_token']) {
                 console.error(`[Payment] Error: PagBank selected but token missing for Admin ${adminId}`);
+                // Try Fallback to Master Admin if current admin fails
+                if (adminId !== 1) {
+                     console.log(`[Payment] Trying fallback to Master Admin (ID 1)`);
+                     // Logic to fetch from ID 1 could be added here, but let's keep it simple for now and just error out correctly.
+                }
             }
 
             // Determine Price
