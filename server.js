@@ -1509,8 +1509,14 @@ app.post('/api/pay/pix', async (req, res) => {
                         qrCodeBase64 = Buffer.from(imageRes.data, 'binary').toString('base64');
                     }
 
-                    // Save context for status check
-                    db.run("UPDATE users SET last_payment_id = ?, last_payment_provider = 'pagbank' WHERE id = ?", [response.data.id, userId]);
+                    // Save context for status check (Wait for DB update to prevent race condition)
+                    await new Promise((resolve, reject) => {
+                        db.run("UPDATE users SET last_payment_id = ?, last_payment_provider = 'pagbank', payment_status = 'pending_payment' WHERE id = ?", 
+                            [response.data.id, userId], (err) => {
+                                if (err) console.error("Error updating payment context:", err);
+                                resolve();
+                            });
+                    });
 
                     return res.json({ 
                         qr_code: qrCodeText, 
@@ -1550,8 +1556,14 @@ app.post('/api/pay/pix', async (req, res) => {
                     const pointOfInteraction = response.data.point_of_interaction;
                     const transactionData = pointOfInteraction.transaction_data;
 
-                    // Save context for status check
-                    db.run("UPDATE users SET last_payment_id = ?, last_payment_provider = 'mercadopago' WHERE id = ?", [response.data.id, userId]);
+                    // Save context for status check (Wait for DB update)
+                    await new Promise((resolve, reject) => {
+                        db.run("UPDATE users SET last_payment_id = ?, last_payment_provider = 'mercadopago', payment_status = 'pending_payment' WHERE id = ?", 
+                            [response.data.id, userId], (err) => {
+                                if (err) console.error("Error updating payment context MP:", err);
+                                resolve();
+                            });
+                    });
 
                     res.json({
                         qr_code: transactionData.qr_code,
