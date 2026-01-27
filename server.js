@@ -1374,10 +1374,21 @@ app.post('/api/pay/pix', async (req, res) => {
             rows.forEach(r => settings[r.key] = r.value);
 
             // Determine Provider
-                const activeProvider = settings['active_payment_provider'] || 'mercadopago';
-                const pagBankEnv = settings['pagbank_env'] || 'production'; // Default to production
-                
-                console.log(`[Payment] Generating Pix for User ${userId} via ${activeProvider} (Admin ${adminId}) [Env: ${pagBankEnv}]`);
+            // Fallback to 'mercadopago' ONLY if explicitly set, otherwise prefer 'pagbank' if configured, or default to 'mercadopago'
+            let activeProvider = settings['active_payment_provider'];
+            
+            // Auto-detect if not set or invalid
+            if (!activeProvider || (activeProvider !== 'pagbank' && activeProvider !== 'mercadopago')) {
+                 if (settings['pagbank_token']) {
+                     activeProvider = 'pagbank';
+                 } else {
+                     activeProvider = 'mercadopago';
+                 }
+            }
+
+            const pagBankEnv = settings['pagbank_env'] || 'production'; 
+            
+            console.log(`[Payment] Generating Pix for User ${userId} via ${activeProvider} (Admin ${adminId}) [Env: ${pagBankEnv}]`);
             
             // Debug: Log if token exists
             if (activeProvider === 'pagbank' && !settings['pagbank_token']) {
