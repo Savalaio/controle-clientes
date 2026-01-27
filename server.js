@@ -1324,6 +1324,16 @@ app.put('/api/admin/settings', (req, res) => {
     res.json({ message: "Configurações atualizadas" });
 });
 
+// Admin: Get Server Public IP (For Whitelisting)
+app.get('/api/admin/debug/server-ip', async (req, res) => {
+    try {
+        const response = await axios.get('https://api.ipify.org?format=json');
+        res.json({ ip: response.data.ip });
+    } catch (error) {
+        res.status(500).json({ error: "Could not fetch IP", details: error.message });
+    }
+});
+
 // --- MERCADO PAGO INTEGRATION ---
 
 // 1. Generate Pix Payment (Multi-Provider)

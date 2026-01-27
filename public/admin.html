@@ -277,6 +277,10 @@
                     <label class="block text-gray-400 text-sm mb-2">PagBank Token (Sandbox/Produção)</label>
                     <input type="text" id="pagbank-token" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-blue-500" placeholder="Token do PagBank">
                     <p class="text-xs text-gray-500 mt-1">Necessário para gerar QR Code Pix automático via PagBank.</p>
+                    <div class="mt-2 text-xs text-yellow-500 flex items-center gap-2">
+                         <i class="fas fa-exclamation-triangle"></i>
+                         <span id="server-ip-display">Verificando IP do servidor...</span>
+                    </div>
                 </div>
 
                 <button onclick="savePrices()" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full transition shadow-lg shadow-blue-900/50">
@@ -698,6 +702,21 @@
                 document.getElementById('count-blocked').innerText = stats.users_blocked;
                 document.getElementById('total-users').innerText = stats.total_users;
                 document.getElementById('total-clients').innerText = stats.total_clients;
+
+                // --- FETCH SERVER IP FOR WHITELISTING ---
+                try {
+                    const ipRes = await fetch(`${API_URL}/admin/debug/server-ip`);
+                    const ipData = await ipRes.json();
+                    if (ipData.ip) {
+                        document.getElementById('server-ip-display').innerHTML = 
+                            `IP do Servidor: <strong class="text-white select-all">${ipData.ip}</strong> (Adicione este IP na Whitelist do PagBank se der erro)`;
+                    } else {
+                        document.getElementById('server-ip-display').innerText = "Não foi possível detectar o IP do servidor.";
+                    }
+                } catch (e) {
+                    console.error("IP Fetch Error", e);
+                    document.getElementById('server-ip-display').innerText = "Erro ao detectar IP (verifique logs)";
+                }
 
                 // Calculate Revenue
                 const revenue = (stats.users_pro * PRICING.pro) + (stats.users_premium * PRICING.premium);
