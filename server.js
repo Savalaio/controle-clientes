@@ -1407,7 +1407,7 @@ app.post('/api/pay/pix', async (req, res) => {
                     };
 
                     const response = await axios.post(pagBankUrl, body, {
-                        headers: { 'Authorization': `Bearer ${pagBankToken}`, 'Content-Type': 'application/json', 'x-api-version': '4.0' }
+                        headers: { 'Authorization': `${pagBankToken}`, 'Content-Type': 'application/json', 'x-api-version': '4.0' }
                     });
 
                     const qrCodeText = response.data.qr_codes[0].text;
